@@ -1,4 +1,6 @@
 window.APP_VER = 'v10';
+/* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
+function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
    الدخول بإيميل وباسورد مرة واحدة على الجهاز، والاشتراك بيتقرا من السيرفر ويتجدد من لوحة الإدارة. */
 var CLOUD_KEY = 'makhzani-cloud';
@@ -40,8 +42,8 @@ function cloudDecide(c,fromCache){
   var now = Date.now(), seen = 0;
   try{ seen = +localStorage.getItem(SEEN_KEY) || 0; }catch(e){}
   if(now < seen - 2*86400000){ cloudShow('blocked','تاريخ الجهاز غلط','ساعة الجهاز راجعة لورا. اظبط التاريخ والوقت وبعدها اضغط تحقق تاني.'); return; }
-  if(c.status==='suspended'){ cloudShow('blocked','الاشتراك موقوف','الاشتراك موقوف. كلّم الدعم.'); return; }
-  if(!c.exp || now > c.exp){ cloudShow('blocked','انتهى الاشتراك','الاشتراك انتهى يوم '+(c.exp ? cloudDate(c.exp) : '—')+'. بعد ما تجدد اضغط تحقق تاني.'); return; }
+  if(c.status==='suspended'){ cloudShow('blocked','الاشتراك موقوف','الاشتراك موقوف. كلّم الدعم'+cloudSup()+'.'); return; }
+  if(!c.exp || now > c.exp){ cloudShow('blocked','انتهى الاشتراك','الاشتراك انتهى يوم '+(c.exp ? cloudDate(c.exp) : '—')+'. بعد ما تجدد اضغط تحقق تاني. للتجديد كلّم'+(cloudSup()||' الدعم')+'.'); return; }
   if(fromCache && now - c.checked > CLOUD_STALE_MS){ cloudShow('offline','لازم تتصل بالنت','الجهاز مش اتصل بالإنترنت بقاله أكتر من 7 أيام. وصّله بالنت وبعدين اضغط تحقق تاني.'); return; }
   try{ if(now>seen) localStorage.setItem(SEEN_KEY,String(now)); }catch(e){}
   if(cloudDataStart(c.shopId)===false) return;
@@ -61,11 +63,11 @@ function cloudVerify(u){
     });
   }).then(function(r){
     if(r.err==='disabled'){ cloudShow('blocked','الحساب موقوف','المالك أوقف الحساب ده. كلّمه.'); return; }
-    if(r.err){ cloudShow('blocked','الحساب مش مربوط بمحل','الحساب ده مش متسجّل كمحل. كلّم الدعم.'); return; }
+    if(r.err){ cloudShow('blocked','الحساب مش مربوط بمحل','الحساب ده مش متسجّل كمحل. كلّم الدعم'+cloudSup()+'.'); return; }
     cloudSaveCache(r.info); cloudInfo = r.info; cloudDecide(r.info,false);
   },function(e){
     var code = (e && e.code) || '';
-    if(code==='permission-denied'){ cloudShow('blocked','مفيش صلاحية','الحساب ده ملوش صلاحية على بيانات المحل. كلّم الدعم.'); return; }
+    if(code==='permission-denied'){ cloudShow('blocked','مفيش صلاحية','الحساب ده ملوش صلاحية على بيانات المحل. كلّم الدعم'+cloudSup()+'.'); return; }
     if(cache){ cloudInfo = cache; cloudDecide(cache,true); }
     else { try{ console.error('cloud verify failed',e); }catch(x){} cloudShow('offline','لازم نت أول مرة','مقدرناش نتحقق من الاشتراك. وصّل الجهاز بالنت وجرّب تاني.'+(code ? ' (الكود: '+code+')' : '')); }
   });
