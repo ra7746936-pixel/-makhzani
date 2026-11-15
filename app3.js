@@ -4,7 +4,7 @@
   var approveCb = null, pendingReset = null, auMode = 'login', pendingUserDel = null, userDelTimer = null;
   var countDraft = null, pendingCnt = false, cntTimer = null, audFilter = 'all', audShow = 60, secShown = false;
   var SENS = {cancel:1,edit:1,delp:1,editp:1,stock:1,fail:1,close:1,cfg:1,user:1,restore:1,count:1,reset:1,delsup:1,entdel:1,entedit:1,approve:1};
-  var ACT_NAME = {login:'دخول',logout:'خروج',fail:'PIN غلط',cancel:'إلغاء فاتورة',edit:'تعديل فاتورة',print:'طباعة',addp:'إضافة صنف',editp:'تعديل صنف',delp:'مسح صنف',stock:'تعديل كمية',restock:'توريد',close:'قفل الدرج',cfg:'إعدادات',user:'حسابات',restore:'استرجاع نسخة',count:'جرد',reset:'فك PIN',sup:'مورد',delsup:'مسح مورد',entdel:'إلغاء حركة مورد',entedit:'تعديل حركة مورد',approve:'موافقة المالك',backup:'نسخة احتياطية'};
+  var ACT_NAME = {login:'دخول',logout:'خروج',fail:'PIN غلط',cancel:'إلغاء فاتورة',edit:'تعديل فاتورة',print:'طباعة',addp:'إضافة صنف',editp:'تعديل صنف',delp:'مسح صنف',stock:'تعديل كمية',restock:'توريد',close:'قفل الدرج',cfg:'إعدادات',user:'حسابات',restore:'استرجاع نسخة',count:'جرد',reset:'فك PIN',sup:'مورد',delsup:'مسح مورد',entdel:'إلغاء حركة مورد',entedit:'تعديل حركة مورد',approve:'موافقة المالك',backup:'نسخة احتياطية',cust:'عميل'};
   var AUD_GROUPS = {
     sens: null,
     inv: {cancel:1,edit:1,print:1},

@@ -11,6 +11,7 @@
 
   var products = new Map();
   var suppliers = new Map();
+  var customers = new Map();
   var selSup = null;
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
   var lastOpts = '';
@@ -48,6 +49,7 @@
         (d.products||[]).forEach(function(p){ products.set(p.id,p); });
         sales = d.sales||[];
         (d.suppliers||[]).forEach(function(s){ suppliers.set(s.id,s); });
+        (d.customers||[]).forEach(function(c){ customers.set(c.id,c); });
         invSeq = +d.seq||0;
       }
     }catch(e){}
@@ -61,7 +63,7 @@
     invSeq = mx;
   }
   function lsSave(){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({products:Array.from(products.values()),sales:sales,suppliers:Array.from(suppliers.values()),seq:invSeq})); }catch(e){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({products:Array.from(products.values()),sales:sales,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),seq:invSeq})); }catch(e){}
   }
   var chain = Promise.resolve();
   function enqueue(fn){
@@ -134,6 +136,14 @@
     suppliers.set(s.id,s);
     persist(function(){ return supWrite(s,old); });
   }
+  function putCustomer(c){
+    customers.set(c.id,c);
+    persist(function(){ return db.doc('customers/'+c.id).set(c); });
+  }
+  function removeCustomer(id){
+    customers.delete(id);
+    persist(function(){ return db.doc('customers/'+id).delete(); });
+  }
   function removeSupplier(id){
     suppliers.delete(id);
     persist(function(){ return db.doc('suppliers/'+id).delete(); });
@@ -175,7 +185,7 @@
     });
   }
   function render(){ if(renderHold){ renderLate = true; return; } keepInputs(renderAll); }
-  function renderAll(){ renderStatus(); renderTabs(); renderSell(); renderStock(); renderSup(); renderReport(); renderInvEdit(); renderBackup(); renderMine(); renderSec(); renderRoleUI(); if(typeof renderCloudInfo==='function') renderCloudInfo(); }
+  function renderAll(){ renderStatus(); renderTabs(); renderSell(); renderStock(); renderSup(); renderCust(); renderInv(); renderReport(); renderInvEdit(); renderBackup(); renderMine(); renderSec(); renderRoleUI(); if(typeof renderCloudInfo==='function') renderCloudInfo(); }
 
   function renderStatus(){
     var el = $('#sync');
@@ -192,7 +202,7 @@
 
   function renderTabs(){
     if(!tabAllowed(view)) view = 'sell';
-    ['sell','stock','sup','report','sec'].forEach(function(v){
+    ['sell','stock','sup','cust','inv','report','sec'].forEach(function(v){
       $('#v-'+v).hidden = (v!==view);
       $('#t-'+v).setAttribute('aria-selected', v===view ? 'true':'false');
       $('#t-'+v).hidden = !tabAllowed(v);

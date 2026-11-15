@@ -315,6 +315,7 @@
     }).join('');
     return '<div class="rc-shop">'+esc(shopCfg.name||'مخزني')+'</div>'+
       '<div class="rc-meta">'+dt(s.ts)+' · فاتورة '+esc(invCode(s))+'</div>'+
+      (s.cust ? '<div class="rc-meta">العميل: '+esc(s.cust.name)+'</div>' : '')+
       '<table><thead><tr><th class="rn">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       (s.fee>0 ? '<div class="rc-fee"><span>خدمة التوصيل</span><span>'+money(s.fee)+'</span></div>' : '')+
       '<div class="rc-total"><span>الإجمالي</span><strong>'+money(s.total)+'</strong></div>'+
@@ -388,13 +389,13 @@
   }
   function exportInvoices(){
     var t0 = periodRows().t0;
-    var rows = [['التاريخ','رقم الفاتورة','الصنف','الكمية','سعر الوحدة','الإجمالي','سعر الجملة','الربح']];
+    var rows = [['التاريخ','رقم الفاتورة','الصنف','الكمية','سعر الوحدة','الإجمالي','سعر الجملة','الربح','العميل']];
     sales.filter(function(s){ return period==='all' || s.ts>=t0; }).forEach(function(s){
       s.lines.forEach(function(l){
         var hasC = !(l.cost==null || !isFinite(+l.cost));
-        rows.push([dt(s.ts),invCode(s),l.name,l.qty,l.price,round(l.qty*l.price),(hasC?l.cost:''),(hasC?round((l.price-l.cost)*l.qty):'')]);
+        rows.push([dt(s.ts),invCode(s),l.name,l.qty,l.price,round(l.qty*l.price),(hasC?l.cost:''),(hasC?round((l.price-l.cost)*l.qty):''),(s.cust?s.cust.name:'')]);
       });
-      if(s.fee>0) rows.push([dt(s.ts),invCode(s),'خدمة توصيل',1,s.fee,s.fee,'','']);
+      if(s.fee>0) rows.push([dt(s.ts),invCode(s),'خدمة توصيل',1,s.fee,s.fee,'','',(s.cust?s.cust.name:'')]);
     });
     downloadCsv('invoices-'+period,rows);
   }
@@ -429,8 +430,11 @@
     if(bad){ toast('المتاح من '+bad.name+' '+fmt(bad.qty)+' بس',true); return; }
     if(!lines.length) return;
     var fee = feeVal(); total += fee;
+    var cid = $('#cust').value, cu = cid ? customers.get(cid) : null;
     var sale = {id:uid(),ts:Date.now(),lines:lines,total:round(total)};
     if(fee>0) sale.fee = fee;
+    if(cu) sale.cust = {id:cu.id,name:cu.name};
+    $('#cust').value = '';
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
     cart = {};
@@ -503,7 +507,7 @@
 
   function withAll(cb){ if(typeof cloudAll==='function') cloudAll(cb); else cb(sales,aud); }
   function exportBackup(){ withAll(doExportBackup); }
-  function buildBackup(S,A){ return {app:'makhzani',version:1,exportedAt:Date.now(),products:Array.from(products.values()),sales:S,suppliers:Array.from(suppliers.values()),seq:invSeq,audit:A}; }
+  function buildBackup(S,A){ return {app:'makhzani',version:1,exportedAt:Date.now(),products:Array.from(products.values()),sales:S,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),seq:invSeq,audit:A}; }
   /* بتستخدمها خاصية الرفع على Drive (cloud.js) */
   window.mkBackupData = function(cb){ withAll(function(S,A){ cb(buildBackup(S,A)); }); };
   window.mkBackupDone = function(where){
@@ -545,6 +549,7 @@
         var eds = (Array.isArray(s.edits)?s.edits:[]).filter(function(x){ return x && isFinite(+x.ts); }).map(function(x){ return {ts:+x.ts,from:num(x.from,0),to:num(x.to,0),by:String(x.by||'')}; });
         var one = {id:String(s.id||uid()),ts:+s.ts,lines:lines,total:num(s.total,0)};
         if(+s.fee>0) one.fee = round(+s.fee);
+        if(s.cust && s.cust.id && s.cust.name) one.cust = {id:String(s.cust.id),name:String(s.cust.name)};
         if(+s.no>0) one.no = Math.floor(+s.no);
         if(eds.length) one.edits = eds;
         if(s.by && s.by.name) one.by = {id:String(s.by.id||''),name:String(s.by.name)};
@@ -568,5 +573,9 @@
         sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),entries:en,created:num(s.created,Date.now())});
       }
     });
-    return {products:ps,sales:ss,suppliers:sp,seq:Math.max(0,Math.floor(+d.seq||0))};
+    var cu = [];
+    (Array.isArray(d.customers)?d.customers:[]).forEach(function(c){
+      if(c && c.id && typeof c.name==='string' && c.name) cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),created:num(c.created,Date.now())});
+    });
+    return {products:ps,sales:ss,suppliers:sp,customers:cu,seq:Math.max(0,Math.floor(+d.seq||0))};
   }

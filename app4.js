@@ -379,7 +379,7 @@
       return;
     }
     logA('restore','استرجاع نسخة احتياطية ('+pendingRestore.products.length+' صنف، '+pendingRestore.sales.length+' فاتورة، '+pendingRestore.suppliers.length+' مورد)');
-    var oldIds = {p:Array.from(products.keys()),s:(pendingRestore.__all||sales.map(function(x){ return x.id; })),u:Array.from(suppliers.keys())};
+    var oldIds = {p:Array.from(products.keys()),s:(pendingRestore.__all||sales.map(function(x){ return x.id; })),u:Array.from(suppliers.keys()),c:Array.from(customers.keys())};
     products = new Map();
     pendingRestore.products.forEach(function(p){ products.set(p.id,p); });
     sales = pendingRestore.sales;
@@ -387,6 +387,7 @@
     numberSales();
     suppliers = new Map();
     pendingRestore.suppliers.forEach(function(s){ suppliers.set(s.id,s); });
+    customers = new Map(); (pendingRestore.customers||[]).forEach(function(c){ customers.set(c.id,c); });
     selSup = null;
     cart = {}; 
     if(mode==='cloud') cloudRestoreWrite(pendingRestore,oldIds);
@@ -469,15 +470,15 @@
   }
   function buildExcelBlob(sales){
     var prods = Array.from(products.values()), sups = Array.from(suppliers.values());
-    var inv = [['رقم الفاتورة','التاريخ','البائع','الصنف','الكمية','سعر الوحدة','الإجمالي','سعر الجملة','الربح']];
+    var inv = [['رقم الفاتورة','التاريخ','البائع','الصنف','الكمية','سعر الوحدة','الإجمالي','سعر الجملة','الربح','العميل']];
     var rev = 0, profit = 0;
     sales.slice().sort(function(a,b){ return (a.no||0)-(b.no||0) || a.ts-b.ts; }).forEach(function(s){
       s.lines.forEach(function(l){
         var hasC = !(l.cost==null || !isFinite(+l.cost)), tot = round(l.qty*l.price);
         rev += tot; if(hasC) profit += (l.price-l.cost)*l.qty;
-        inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '',l.name,l.qty,l.price,tot,hasC ? l.cost : '',hasC ? round((l.price-l.cost)*l.qty) : '']);
+        inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '',l.name,l.qty,l.price,tot,hasC ? l.cost : '',hasC ? round((l.price-l.cost)*l.qty) : '',s.cust ? s.cust.name : '']);
       });
-      if(s.fee>0){ rev += s.fee; inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '','خدمة توصيل',1,s.fee,s.fee,'',s.fee]); profit += s.fee; }
+      if(s.fee>0){ rev += s.fee; inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '','خدمة توصيل',1,s.fee,s.fee,'',s.fee,s.cust ? s.cust.name : '']); profit += s.fee; }
     });
     var stockVal = 0;
     var itm = [['الصنف','سعر البيع','الكمية المتبقية','الحالة','القطع في الكرتونة','الكراتين المتبقية','سعر الجملة','قيمة المخزون (جملة)','الباركود','اتباع (قطعة)','إجمالي الإيراد']];
@@ -672,6 +673,11 @@
       var m = new Map();
       snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
       suppliers = m; render();
+    },fail);
+    db.collection('customers').onSnapshot(function(snap){
+      var m = new Map();
+      snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
+      customers = m; render();
     },fail);
     render();
   }
@@ -888,3 +894,119 @@ $('#imp-go').addEventListener('click',function(){
 
 /* نسخة كاملة + ملف Excel مقروء (لرفعهم على Drive) */
 window.mkBackupBundle = function(cb){ mkBackupData(function(data){ cb(data, buildExcelBlob(data.sales||[])); }); };
+
+/* ---------- تبويب الفواتير (النهارده / 7 أيام / الشهر / من الأول) ---------- */
+var invPer = 'today', invQ = '', invLimit = 50;
+function invSince(per){
+  var d = new Date(); d.setHours(0,0,0,0);
+  if(per==='today') return d.getTime();
+  if(per==='week') return d.getTime()-6*86400000;
+  if(per==='month'){ d.setDate(1); return d.getTime(); }
+  return 0;
+}
+function invRow(s,showCust){
+  var tag = (s.edits && s.edits.length) ? '<span class="pill warn">اتعدّلت</span>' : '';
+  var ct = (showCust!==false && s.cust) ? '<span class="cust-tag">· '+esc(s.cust.name)+'</span>' : '';
+  var fee = s.fee>0 ? '<span class="pmeta"> · توصيل '+money(s.fee)+'</span>' : '';
+  return '<li><span class="when"><span class="inv-num">'+esc(invCode(s))+'</span> · '+dt(s.ts)+(s.by ? ' · '+esc(s.by.name) : '')+ct+'</span>'+
+    '<span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack)); }).join('، ')+fee+'</span><span class="sum">'+money(s.total)+'</span>'+
+    '<div class="inv-act"><button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button><button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
+}
+function renderInv(){
+  var box = $('#inv-list'); if(!box || $('#v-inv').hidden) return;
+  Array.prototype.forEach.call(document.querySelectorAll('[data-iper]'),function(b){ b.setAttribute('aria-pressed', b.dataset.iper===invPer ? 'true' : 'false'); });
+  var t0 = invSince(invPer), q = invQ.trim().toLowerCase().replace(/^#/,'');
+  var list = sales.filter(function(s){ return s.ts>=t0; });
+  if(q){
+    list = list.filter(function(s){
+      if(String(s.no||'')===q) return true;
+      if(s.cust && s.cust.name.toLowerCase().indexOf(q)>=0) return true;
+      return s.lines.some(function(l){ return l.name.toLowerCase().indexOf(q)>=0; });
+    });
+  }
+  list.sort(function(a,b){ return b.ts-a.ts; });
+  var tot = 0, fees = 0; list.forEach(function(s){ tot += s.total; fees += (s.fee||0); });
+  $('#inv-tiles').innerHTML =
+    '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(list.length)+'</strong></div>'+
+    '<div class="tile"><span>إجمالي الفواتير</span><strong>'+money(round(tot))+'</strong>'+(fees>0 ? '<small>منها توصيل '+money(round(fees))+'</small>' : '')+'</div>';
+  var shown = list.slice(0,invLimit);
+  box.innerHTML = shown.length ? shown.map(function(s){ return invRow(s); }).join('') : '<li class="note">مفيش فواتير في الفترة دي'+(q ? ' بالبحث ده' : '')+'.</li>';
+  $('#inv-more').hidden = list.length<=invLimit;
+  $('#inv-note').textContent = (invPer==='all' && mode==='cloud') ? 'بيعرض فواتير آخر 45 يوم. الأقدم منها موجودة في ملف النسخة الاحتياطية وExcel.' : '';
+}
+document.addEventListener('click',function(e){
+  var b = e.target.closest('[data-iper]');
+  if(b){ invPer = b.dataset.iper; invLimit = 50; render(); return; }
+  var m = e.target.closest('[data-act="invmore"]');
+  if(m){ invLimit += 50; render(); }
+});
+$('#inv-q').addEventListener('input',function(e){ invQ = e.target.value; invLimit = 50; renderInv(); });
+
+/* ---------- العملاء ---------- */
+var selCust = null, custQ = '';
+function custInvoices(id){ return sales.filter(function(s){ return s.cust && s.cust.id===id; }).sort(function(a,b){ return b.ts-a.ts; }); }
+function renderCustSel(){
+  var el = $('#cust'); if(!el) return;
+  var opts = '<option value="">بدون عميل</option>'+Array.from(customers.values()).sort(byName).map(function(c){ return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>'; }).join('');
+  if(opts!==el.__o){ var cur = el.value; el.innerHTML = opts; el.__o = opts; if(cur && customers.get(cur)) el.value = cur; }
+}
+function renderCust(){
+  renderCustSel();
+  if($('#v-cust').hidden) return;
+  var c = selCust ? customers.get(selCust) : null;
+  if(selCust && !c) selCust = null;
+  $('#cust-list-view').hidden = !!c; $('#cust-detail').hidden = !c;
+  var q = custQ.trim().toLowerCase();
+  var list = Array.from(customers.values()).filter(function(x){ return !q || x.name.toLowerCase().indexOf(q)>=0 || (x.phone||'').indexOf(q)>=0; }).sort(byName);
+  $('#custlist').innerHTML = list.length ? list.map(function(x){
+    var inv = custInvoices(x.id), tot = 0; inv.forEach(function(s){ tot += s.total; });
+    return '<li class="item"><button type="button" class="sup-row" data-act="opencust" data-id="'+esc(x.id)+'"><span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone ? '<span class="pmeta">'+esc(x.phone)+'</span>' : '')+'</span><span class="pill">'+fmt(inv.length)+' فاتورة · '+money(round(tot))+'</span></button></li>';
+  }).join('') : '<li class="note">'+(q ? 'مفيش عميل بالاسم ده.' : 'لسه ماسجلتش عملاء. ضيف أول عميل من فوق.')+'</li>';
+  if(c){
+    var inv2 = custInvoices(c.id), t2 = 0; inv2.forEach(function(s){ t2 += s.total; });
+    $('#cud-name').textContent = c.name; $('#cud-phone').textContent = c.phone ? 'التليفون: '+c.phone : 'من غير تليفون';
+    $('#cud-tiles').innerHTML = '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(inv2.length)+'</strong></div><div class="tile"><span>إجمالي مشترياته</span><strong>'+money(round(t2))+'</strong></div>';
+    $('#cud-inv').innerHTML = inv2.length ? inv2.map(function(s){ return invRow(s,false); }).join('') : '<li class="note">مفيش فواتير لسه.</li>';
+  }
+}
+function addCustomer(name,phone){
+  var c = {id:uid(),name:name,phone:phone||'',created:Date.now()};
+  logA('cust','ضاف عميل: '+name);
+  putCustomer(c);
+  return c;
+}
+$('#cform').addEventListener('submit',function(e){
+  e.preventDefault();
+  if(!ready()) return;
+  var name = $('#cu-name').value.trim();
+  if(!name){ toast('اكتب اسم العميل',true); $('#cu-name').focus(); return; }
+  var dup = Array.from(customers.values()).some(function(x){ return x.name===name && x.phone===$('#cu-phone').value.trim(); });
+  if(dup){ toast('العميل ده متسجل قبل كده',true); return; }
+  var c = addCustomer(name,$('#cu-phone').value.trim());
+  $('#cform').reset(); toast('اتضاف العميل: '+name); selCust = c.id; render();
+});
+$('#cu-q').addEventListener('input',function(e){ custQ = e.target.value; renderCust(); });
+document.addEventListener('click',function(e){
+  var b = e.target.closest('[data-act]'); if(!b) return;
+  var act = b.dataset.act;
+  if(act==='opencust'){ selCust = b.dataset.id; render(); }
+  else if(act==='custback'){ selCust = null; render(); }
+  else if(act==='newcust-sale'){
+    if(!ready()) return;
+    var n = window.prompt('اسم العميل:'); n = n ? n.trim() : ''; if(!n) return;
+    var ph = window.prompt('التليفون (اختياري):') || '';
+    var c = addCustomer(n,ph.trim()); renderCustSel(); $('#cust').value = c.id; toast('اتضاف العميل: '+n);
+  }
+  else if(act==='editcust'){
+    var cc = selCust ? customers.get(selCust) : null; if(!cc || !isOwner()) return;
+    var nn = window.prompt('اسم العميل:',cc.name); if(nn===null) return; nn = nn.trim(); if(!nn){ toast('الاسم مينفعش يبقى فاضي',true); return; }
+    var pp = window.prompt('التليفون:',cc.phone||''); if(pp===null) return;
+    logA('cust','تعديل عميل: '+cc.name+' ← '+nn);
+    putCustomer(Object.assign({},cc,{name:nn,phone:pp.trim()})); toast('اتحفظ'); render();
+  }
+  else if(act==='delcust'){
+    var dc = selCust ? customers.get(selCust) : null; if(!dc || !isOwner()) return;
+    if(!window.confirm('مسح العميل '+dc.name+'؟ فواتيره هتفضل زي ما هي.')) return;
+    logA('cust','مسح عميل: '+dc.name); removeCustomer(dc.id); selCust = null; toast('اتمسح العميل'); render();
+  }
+});

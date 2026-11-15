@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -42,6 +42,8 @@ setTimeout(function(){
       <button class="tab" role="tab" data-tab="sell" id="t-sell">البيع</button>
       <button class="tab" role="tab" data-tab="stock" id="t-stock">المخزن</button>
       <button class="tab" role="tab" data-tab="sup" id="t-sup">الموردين</button>
+      <button class="tab" role="tab" data-tab="cust" id="t-cust">العملاء</button>
+      <button class="tab" role="tab" data-tab="inv" id="t-inv">الفواتير</button>
       <button class="tab" role="tab" data-tab="report" id="t-report">التقرير</button>
       <button class="tab" role="tab" data-tab="sec" id="t-sec" hidden>الأمان</button>
     </nav>
@@ -81,6 +83,7 @@ setTimeout(function(){
         <div class="panel cart">
           <h2>الفاتورة</h2>
           <ul id="cart" class="clist"></ul>
+          <div class="fee-row cust-row"><label for="cust">العميل (اختياري)</label><select id="cust"></select><button type="button" class="btn sm" data-act="newcust-sale" aria-label="عميل جديد">+ جديد</button></div>
           <div class="fee-row"><label for="fee">خدمة التوصيل (لو فيه)</label><input id="fee" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
           <div class="total"><span>الإجمالي</span><strong id="total">0 ج.م</strong></div>
           <button id="checkout" class="btn primary big" type="button">تأكيد البيع</button>
@@ -349,6 +352,58 @@ setTimeout(function(){
       </div>
     </section>
 
+    <section id="v-cust" aria-labelledby="t-cust" hidden>
+      <div id="cust-list-view">
+        <div class="panel">
+          <h2>إضافة عميل</h2>
+          <form id="cform" class="pform" autocomplete="off">
+            <div class="wide"><label for="cu-name">اسم العميل</label><input id="cu-name" type="text" placeholder="مثلا: أحمد محمود"></div>
+            <div><label for="cu-phone">التليفون (اختياري)</label><input id="cu-phone" type="text" inputmode="tel" placeholder="01xxxxxxxxx"></div>
+            <div class="actions"><button class="btn primary" type="submit">إضافة العميل</button></div>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>العملاء</h2>
+          <input id="cu-q" type="search" placeholder="ابحث بالاسم أو التليفون" autocomplete="off">
+          <ul id="custlist" class="slist"></ul>
+        </div>
+      </div>
+      <div id="cust-detail" hidden>
+        <button class="btn ghost back" type="button" data-act="custback">← كل العملاء</button>
+        <div class="panel">
+          <h2 id="cud-name"></h2>
+          <p class="hint" id="cud-phone"></p>
+          <div id="cud-tiles" class="tiles"></div>
+          <div class="row-actions">
+            <button class="btn" type="button" data-act="editcust">غيّر الاسم / التليفون</button>
+            <button class="btn danger" type="button" data-act="delcust">مسح العميل</button>
+          </div>
+          <p class="hint">مسح العميل مش بيمسح فواتيره، الفواتير القديمة بتفضل باسمه.</p>
+        </div>
+        <div class="panel">
+          <h2>فواتير العميل</h2>
+          <ul id="cud-inv" class="recent"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="v-inv" aria-labelledby="t-inv" hidden>
+      <div class="seg" role="group" aria-label="فترة الفواتير">
+        <button type="button" data-iper="today" aria-pressed="true">النهارده</button>
+        <button type="button" data-iper="week" aria-pressed="false">آخر 7 أيام</button>
+        <button type="button" data-iper="month" aria-pressed="false">الشهر ده</button>
+        <button type="button" data-iper="all" aria-pressed="false">من الأول</button>
+      </div>
+      <div id="inv-tiles" class="tiles"></div>
+      <div class="panel">
+        <label class="sr" for="inv-q">بحث في الفواتير</label>
+        <input id="inv-q" type="search" placeholder="ابحث برقم الفاتورة أو اسم العميل أو الصنف" autocomplete="off">
+        <ul id="inv-list" class="recent"></ul>
+        <div class="row-actions"><button class="btn" type="button" id="inv-more" data-act="invmore" hidden>اعرض أكتر</button></div>
+        <p class="hint" id="inv-note"></p>
+      </div>
+    </section>
+
     <section id="v-report" aria-labelledby="t-report" hidden>
       <div class="seg" role="group" aria-label="الفترة">
         <button type="button" data-period="today" aria-pressed="true">النهارده</button>
@@ -557,11 +612,11 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=9" charset="utf-8"></script>
-<script src="app1.js?v=9" charset="utf-8"></script>
-<script src="app2.js?v=9" charset="utf-8"></script>
-<script src="app3.js?v=9" charset="utf-8"></script>
-<script src="cloud.js?v=9" charset="utf-8"></script>
-<script src="app4.js?v=9" charset="utf-8"></script>
+<script src="fb.js?v=10" charset="utf-8"></script>
+<script src="app1.js?v=10" charset="utf-8"></script>
+<script src="app2.js?v=10" charset="utf-8"></script>
+<script src="app3.js?v=10" charset="utf-8"></script>
+<script src="cloud.js?v=10" charset="utf-8"></script>
+<script src="app4.js?v=10" charset="utf-8"></script>
 </body>
 </html>

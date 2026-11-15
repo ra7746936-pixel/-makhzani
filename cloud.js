@@ -1,4 +1,4 @@
-window.APP_VER = 'v9';
+window.APP_VER = 'v10';
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
    الدخول بإيميل وباسورد مرة واحدة على الجهاز، والاشتراك بيتقرا من السيرفر ويتجدد من لوحة الإدارة. */
 var CLOUD_KEY = 'makhzani-cloud';
@@ -117,7 +117,7 @@ function cloudDataStart(shopId){
   var cashier = !!(cloudInfo && cloudInfo.role==='cashier');
   db = FB.shopDb(shopId);
   mode = 'pending';
-  products = new Map(); sales = []; suppliers = new Map();
+  products = new Map(); sales = []; suppliers = new Map(); customers = new Map();
   var fail = function(err){ toast('مشكلة في المزامنة: '+((err && (err.code || err.message)) || ''),true); };
   var got = function(k){
     cloudGot[k] = true;
@@ -139,6 +139,12 @@ function cloudDataStart(shopId){
     var mx = invSeq; sales.forEach(function(s){ if(s.no>mx) mx = s.no; }); invSeq = mx; cloudMeta('s',snap);
     got('s');
   },fail);
+  /* العملاء: كل الأجهزة (والكاشير) بتقراهم */
+  db.collection('customers').onSnapshot(function(snap){
+    var m = new Map();
+    snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
+    customers = m; render();
+  },function(){});
   if(cashier){
     /* الكاشير: مفيش موردين ولا سجل أمان ولا إعدادات حماية. بيقرا بيانات الفاتورة المطبوعة بس */
     cloudGot.u = true; cloudGot.m = true;
@@ -284,13 +290,15 @@ function cloudAuditMigrate(shopId){
 }
 /* استرجاع نسخة احتياطية في السحابة: بيمسح اللي مش في الملف ويكتب اللي فيه */
 function cloudRestoreWrite(d,old){
-  var keep = {p:{},s:{},u:{}};
+  var keep = {p:{},s:{},u:{},c:{}};
   d.products.forEach(function(p){ keep.p[p.id] = 1; db.doc('products/'+p.id).set(p); });
   d.sales.forEach(function(s){ keep.s[s.id] = 1; db.doc('sales/'+s.id).set(s); });
   d.suppliers.forEach(function(s){ keep.u[s.id] = 1; db.doc('suppliers/'+s.id).set(s); });
   old.p.forEach(function(id){ if(!keep.p[id]) db.doc('products/'+id).delete(); });
   old.s.forEach(function(id){ if(!keep.s[id]) db.doc('sales/'+id).delete(); });
   old.u.forEach(function(id){ if(!keep.u[id]) db.doc('suppliers/'+id).delete(); });
+  (d.customers||[]).forEach(function(c){ keep.c[c.id] = 1; db.doc('customers/'+c.id).set(c); });
+  (old.c||[]).forEach(function(id){ if(!keep.c[id]) db.doc('customers/'+id).delete(); });
   var mx = Math.max(invSeq,d.seq||0); d.sales.forEach(function(s){ if(s.no>mx) mx = s.no; });
   db.doc('meta/counter').set({seq:mx});
 }
@@ -393,7 +401,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=9').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=10').catch(function(){}); });
   }
 }catch(e){}
 
