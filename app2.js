@@ -57,6 +57,7 @@
     if(!ready()) return;
     var s = findSale(editSale);
     if(!s) return;
+    if(sess && sess.server && hasDebt(s)){ toast('الفاتورة دي آجل على عميل. إلغاؤها أو تعديلها من المالك بس.',true); return; }
     if(!ok && needApproval('inv')){ askOwner('تعديل فاتورة '+invCode(s),function(){ saveInvEdit(true); }); return; }
     var kept = draft.filter(function(d){ return d.qty>0; });
     if(!kept.length){ toast('مفيش أصناف في الفاتورة. لو عايز تلغيها كلها اضغط «إلغاء الفاتورة».',true); return; }
@@ -79,6 +80,7 @@
     });
     var chg = draft.filter(function(d){ return d.qty!==d.orig; }).map(function(d){ return d.name+': '+fmt(d.orig)+'←'+fmt(d.qty); }).join('، ');
     logA('edit','تعديل فاتورة '+invCode(s)+' من '+money(s.total)+' إلى '+money(total)+' ('+chg+')'+(s.by ? ' — البائع: '+s.by.name : ''),{id:s.id,from:s.total,to:total});
+    custSaleSync(s,ns);
     applySaleChange(ns,Array.from(upd.values()));
     closeInvEdit();
     toast(diff<0 ? 'اتعدّلت الفاتورة. ترجّع للعميل '+money(-diff) : diff>0 ? 'اتعدّلت الفاتورة. العميل يدفع فرق '+money(diff) : 'اتعدّلت الفاتورة');
@@ -96,6 +98,7 @@
       clearTimeout(cancelInvTimer); pendingCancelInv = false;
     }
     if(!ready()) return;
+    if(sess && sess.server && hasDebt(s)){ toast('الفاتورة دي آجل على عميل. إلغاؤها أو تعديلها من المالك بس.',true); return; }
     if(!ok && needApproval('inv')){ askOwner('إلغاء فاتورة '+invCode(s)+' بقيمة '+money(s.total),function(){ cancelInvoice(true); }); return; }
     var upd = [];
     s.lines.forEach(function(l){
@@ -103,7 +106,7 @@
       if(p) upd.push(Object.assign({},p,{qty:round(p.qty+l.qty),sold:Math.max(0,round((p.sold||0)-l.qty)),revenue:Math.max(0,round((p.revenue||0)-l.qty*l.price))}));
     });
     logA('cancel','إلغاء فاتورة '+invCode(s)+' بقيمة '+money(s.total)+': '+linesText(s.lines)+(s.by ? ' — البائع: '+s.by.name : ''),{id:s.id,total:s.total});
-    applySaleChange(null,upd,s.id);
+    applySaleChange(null,upd,s.id); custSaleSync(s,null);
     var t = s.total;
     closeInvEdit();
     toast('اتلغت الفاتورة. ترجّع للعميل '+money(t));
@@ -319,6 +322,7 @@
       '<table><thead><tr><th class="rn">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       (s.fee>0 ? '<div class="rc-fee"><span>خدمة التوصيل</span><span>'+money(s.fee)+'</span></div>' : '')+
       '<div class="rc-total"><span>الإجمالي</span><strong>'+money(s.total)+'</strong></div>'+
+      (s.paid!=null && s.paid<s.total ? '<div class="rc-fee"><span>المدفوع</span><span>'+money(s.paid)+'</span></div><div class="rc-fee"><span>المتبقي على العميل</span><strong>'+money(round(s.total-s.paid))+'</strong></div>' : '')+
       (shopCfg.foot ? '<div class="rc-foot">'+esc(shopCfg.foot)+'</div>' : '');
   }
   function printSale(sid){
@@ -434,6 +438,13 @@
     var sale = {id:uid(),ts:Date.now(),lines:lines,total:round(total)};
     if(fee>0) sale.fee = fee;
     if(cu) sale.cust = {id:cu.id,name:cu.name};
+    /* بيع آجل: لو اتكتب مدفوع أقل من الإجمالي، الباقي بيتسجل دين على العميل */
+    var paidTxt = cu ? $('#paid').value.trim() : '', paidN = paidTxt==='' ? null : parseFloat(paidTxt);
+    if(paidN!==null){
+      if(!(paidN>=0) || paidN>sale.total){ toast('المدفوع لازم يكون من صفر لحد إجمالي الفاتورة ('+money(sale.total)+')',true); return; }
+      if(paidN<sale.total) sale.paid = round(paidN);
+    }
+    $('#paid').value = '';
     $('#cust').value = '';
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
@@ -446,8 +457,8 @@
       var fin = function(no){
         sale.no = no; if(no>invSeq) invSeq = no;
         lastSaleId = sale.id;
-        recordSale(sale,updated);
-        toast('تم البيع: '+money(total));
+        recordSale(sale,updated); creditEntry(sale);
+        toast('تم البيع: '+money(total)+(sale.paid!=null ? ' · على العميل '+money(round(sale.total-sale.paid)) : ''));
         focusQ();
       };
       /* من غير نت: الفاتورة بتتحفظ برقم مؤقت وبتاخد رقمها الحقيقي أول ما النت يرجع (عشان مفيش رقمين يتكرروا) */
@@ -456,10 +467,29 @@
     }
     sale.no = ++invSeq;
     lastSaleId = sale.id;
-    recordSale(sale,updated);
-    toast('تم البيع: '+money(total));
+    recordSale(sale,updated); creditEntry(sale);
+    toast('تم البيع: '+money(total)+(sale.paid!=null ? ' · على العميل '+money(round(sale.total-sale.paid)) : ''));
     focusQ();
   }
+  /* دين الفاتورة الآجل بيتسجل في حساب العميل */
+  function creditEntry(sale){
+    if(sale.paid==null || !sale.cust) return;
+    var c = customers.get(sale.cust.id); if(!c) return;
+    var e = {id:uid(),type:'sale',ts:sale.ts,sid:sale.id,no:sale.no||0,total:sale.total,paid:sale.paid,by:(sess?sess.name:'')};
+    putCustomer(Object.assign({},c,{entries:(c.entries||[]).concat([e])}));
+  }
+  /* لما فاتورة آجل تتلغي أو تتعدل، دينها في حساب العميل بيتظبط معاها */
+  function custSaleSync(s,ns){
+    if(!s.cust) return;
+    var c = customers.get(s.cust.id); if(!c) return;
+    var en = (c.entries||[]), i = -1; en.forEach(function(e,k){ if(e.type==='sale' && e.sid===s.id) i = k; });
+    if(i<0) return;
+    var ne = en.slice();
+    if(!ns) ne.splice(i,1);
+    else { var e2 = Object.assign({},ne[i],{total:ns.total}); if(e2.paid>e2.total) e2.paid = e2.total; ne[i] = e2; ns.paid = e2.paid; }
+    putCustomer(Object.assign({},c,{entries:ne}));
+  }
+  function hasDebt(s){ return s.cust && s.paid!=null && s.paid<s.total; }
 
   /* ---------- المخزن ---------- */
   function resetForm(){
@@ -550,6 +580,7 @@
         var one = {id:String(s.id||uid()),ts:+s.ts,lines:lines,total:num(s.total,0)};
         if(+s.fee>0) one.fee = round(+s.fee);
         if(s.cust && s.cust.id && s.cust.name) one.cust = {id:String(s.cust.id),name:String(s.cust.name)};
+        if(s.paid!=null && +s.paid>=0) one.paid = round(+s.paid);
         if(+s.no>0) one.no = Math.floor(+s.no);
         if(eds.length) one.edits = eds;
         if(s.by && s.by.name) one.by = {id:String(s.by.id||''),name:String(s.by.name)};
@@ -575,7 +606,13 @@
     });
     var cu = [];
     (Array.isArray(d.customers)?d.customers:[]).forEach(function(c){
-      if(c && c.id && typeof c.name==='string' && c.name) cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),created:num(c.created,Date.now())});
+      if(c && c.id && typeof c.name==='string' && c.name){
+        var en = (Array.isArray(c.entries)?c.entries:[]).filter(function(e){ return e && e.id && (e.type==='sale'||e.type==='debt'||e.type==='payment'); }).map(function(e){
+          if(e.type==='sale') return {id:String(e.id),type:'sale',ts:num(e.ts,0),sid:String(e.sid||''),no:Math.floor(num(e.no,0)),total:num(e.total,0),paid:num(e.paid,0),by:String(e.by||'')};
+          return {id:String(e.id),type:e.type,ts:num(e.ts,0),amount:num(e.amount,0),note:String(e.note||''),by:String(e.by||'')};
+        });
+        cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),entries:en,created:num(c.created,Date.now())});
+      }
     });
     return {products:ps,sales:ss,suppliers:sp,customers:cu,seq:Math.max(0,Math.floor(+d.seq||0))};
   }

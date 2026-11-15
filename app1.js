@@ -136,9 +136,37 @@
     suppliers.set(s.id,s);
     persist(function(){ return supWrite(s,old); });
   }
+  /* كتابة عميل: نفس منطق المورد. الحركات الجديدة بتتضاف لوحدها (آمنة مع أكتر من جهاز)، وأي تعديل أو حذف بيكتب العميل كله */
+  function custWrite(c,old){
+    if(mode!=='cloud' || !old) return db.doc('customers/'+c.id).set(c);
+    var oe = old.entries||[], ne = c.entries||[], oid = {}, nid = {};
+    oe.forEach(function(e){ oid[e.id] = e; }); ne.forEach(function(e){ nid[e.id] = 1; });
+    var removed = oe.some(function(e){ return !nid[e.id]; });
+    var changed = ne.some(function(e){ return oid[e.id] && JSON.stringify(e)!==JSON.stringify(oid[e.id]); });
+    if(removed || changed) return db.doc('customers/'+c.id).set(c);
+    var added = ne.filter(function(e){ return !oid[e.id]; });
+    var rest = Object.assign({},c); delete rest.entries;
+    return db.upd('customers/'+c.id,rest,null,added.length ? {entries:added} : null);
+  }
   function putCustomer(c){
+    var old = customers.get(c.id);
     customers.set(c.id,c);
-    persist(function(){ return db.doc('customers/'+c.id).set(c); });
+    persist(function(){ return custWrite(c,old); });
+  }
+  /* رصيد العميل: موجب = عليه (مدين للمحل)، سالب = له */
+  function custStats(c){
+    var owed = 0, paid = 0, bought = 0;
+    (c.entries||[]).forEach(function(e){
+      if(e.type==='sale'){ bought += e.total; owed += e.total-(e.paid||0); }
+      else if(e.type==='debt') owed += e.amount;
+      else if(e.type==='payment') paid += e.amount;
+    });
+    return {bought:round(bought),paid:round(paid),bal:round(owed-paid)};
+  }
+  function custBal(bal){
+    if(bal>0) return ['عليه '+money(bal),'warn'];
+    if(bal<0) return ['له '+money(-bal),'ok'];
+    return ['متسوّي','zero'];
   }
   function removeCustomer(id){
     customers.delete(id);
@@ -315,14 +343,16 @@
     r.rows.forEach(function(x){ rev += x.rev; pcs += x.sold; });
     products.forEach(function(p){ stockVal += p.qty*p.price; });
     var pr = profitFor(sales.filter(function(s){ return period==='all' || s.ts>=r.t0; }));
-    var owed = 0;
+    var owed = 0, custOwed = 0;
     suppliers.forEach(function(s){ var b = supStats(s).bal; if(b>0) owed += b; });
+    customers.forEach(function(c){ var b = custStats(c).bal; if(b>0) custOwed += b; });
     $('#tiles').innerHTML =
       '<div class="tile"><span>مبيعات '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(rev)+'</strong>'+(period==='today'?'<small>'+fmt(r.invoices)+' فاتورة</small>':'')+'</div>'+
       '<div class="tile"><span>صافي الربح '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(pr.profit)+'</strong><small>'+(pr.unknown ? 'من غير '+fmt(pr.unknown)+' سطر مفيهوش سعر جملة' : 'الإيراد − سعر الجملة')+'</small></div>'+
       '<div class="tile"><span>قطع اتباعت</span><strong>'+fmt(pcs)+'</strong></div>'+
       '<div class="tile"><span>قيمة اللي فاضل في المخزن</span><strong>'+money(stockVal)+'</strong></div>'+
-      '<div class="tile"><span>مستحق للموردين</span><strong>'+money(owed)+'</strong></div>';
+      '<div class="tile"><span>مستحق للموردين</span><strong>'+money(owed)+'</strong></div>'+
+      '<div class="tile"><span>مستحق من العملاء (ديون)</span><strong>'+money(custOwed)+'</strong></div>';
     $('#rtable').innerHTML = r.rows.length ? r.rows.map(function(x){
       return '<tr><td>'+esc(x.name)+'</td><td class="n">'+fmt(x.sold)+'</td><td class="n">'+(x.left===null?'—':fmt(x.left))+'</td><td class="n">'+money(x.rev)+'</td></tr>';
     }).join('') : '<tr><td colspan="4" class="note">مفيش أصناف لسه.</td></tr>';

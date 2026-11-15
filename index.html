@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -84,6 +84,7 @@ setTimeout(function(){
           <h2>الفاتورة</h2>
           <ul id="cart" class="clist"></ul>
           <div class="fee-row cust-row"><label for="cust">العميل (اختياري)</label><select id="cust"></select><button type="button" class="btn sm" data-act="newcust-sale" aria-label="عميل جديد">+ جديد</button></div>
+          <div class="fee-row" id="paid-row" hidden><label for="paid">المدفوع الآن (لو أقل = آجل)</label><input id="paid" type="number" inputmode="decimal" min="0" step="any" placeholder="كامل"></div>
           <div class="fee-row"><label for="fee">خدمة التوصيل (لو فيه)</label><input id="fee" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
           <div class="total"><span>الإجمالي</span><strong id="total">0 ج.م</strong></div>
           <button id="checkout" class="btn primary big" type="button">تأكيد البيع</button>
@@ -380,6 +381,24 @@ setTimeout(function(){
           </div>
           <p class="hint">مسح العميل مش بيمسح فواتيره، الفواتير القديمة بتفضل باسمه.</p>
         </div>
+        <div class="panel" id="cud-owner">
+          <h2>حساب العميل (له / عليه)</h2>
+          <p class="hint">لما العميل يشتري آجل: اختار اسمه في البيع واكتب «المدفوع الآن» (الباقي بيتسجل عليه). وهنا تسجّل اللي بيدفعه بعد كده، أو دين قديم ليه قبل البرنامج.</p>
+          <form id="cp-form" class="pform" autocomplete="off">
+            <div><label for="cp-amount">دفعة من العميل</label><input id="cp-amount" type="number" inputmode="decimal" min="0" step="any" placeholder="المبلغ"></div>
+            <div><label for="cp-note">ملاحظة (اختياري)</label><input id="cp-note" type="text" placeholder="كاش / تحويل"></div>
+            <div class="actions"><button class="btn primary" type="submit">سجّل الدفعة</button></div>
+          </form>
+          <form id="cdb-form" class="pform" autocomplete="off">
+            <div><label for="cd-amount">دين قديم عليه</label><input id="cd-amount" type="number" inputmode="decimal" min="0" step="any" placeholder="المبلغ"></div>
+            <div><label for="cd-note">ملاحظة (اختياري)</label><input id="cd-note" type="text" placeholder="مثلا: رصيد من الدفتر"></div>
+            <div class="actions"><button class="btn" type="submit">سجّل الدين</button></div>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>حركات الحساب</h2>
+          <ul id="cud-ledger" class="ledger"></ul>
+        </div>
         <div class="panel">
           <h2>فواتير العميل</h2>
           <ul id="cud-inv" class="recent"></ul>
@@ -612,11 +631,11 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=10" charset="utf-8"></script>
-<script src="app1.js?v=10" charset="utf-8"></script>
-<script src="app2.js?v=10" charset="utf-8"></script>
-<script src="app3.js?v=10" charset="utf-8"></script>
-<script src="cloud.js?v=10" charset="utf-8"></script>
-<script src="app4.js?v=10" charset="utf-8"></script>
+<script src="fb.js?v=11" charset="utf-8"></script>
+<script src="app1.js?v=11" charset="utf-8"></script>
+<script src="app2.js?v=11" charset="utf-8"></script>
+<script src="app3.js?v=11" charset="utf-8"></script>
+<script src="cloud.js?v=11" charset="utf-8"></script>
+<script src="app4.js?v=11" charset="utf-8"></script>
 </body>
 </html>
