@@ -18,7 +18,8 @@
   var sales = [];
   var cart = {};
   /* عرض الكمية: كرتونة كاملة تتكتب "1 كرتونة" مش 20 كيس */
-  function qtyText(q,pack){
+  function qtyText(q,pack,u){
+    if(u) return fmt(q)+' '+u;
     if(!(pack>1) || q<pack) return fmt(q);
     var c = Math.floor(q/pack), r = round(q-c*pack);
     return fmt(c)+' كرتونة'+(r>0 ? ' و '+fmt(r)+' قطعة' : '');
@@ -255,7 +256,7 @@
     $('#plist').innerHTML = list.length ? list.map(function(p){
       return '<li><button type="button" class="prow" data-act="add" data-id="'+esc(p.id)+'"'+(p.qty<=0?' disabled':'')+'>'+
         '<span class="pname">'+esc(p.name)+'</span>'+
-        '<span class="pmeta">'+money(p.price)+' · '+(p.qty<=0?'خلص':'فاضل '+fmt(p.qty))+'</span>'+
+        '<span class="pmeta">'+money(p.price)+(p.unit?' / '+esc(p.unit):'')+' · '+(p.qty<=0?'خلص':'فاضل '+fmt(p.qty)+(p.unit?' '+esc(p.unit):''))+'</span>'+
         '<span class="padd" aria-hidden="true">+</span></button>'+(p.pack>1 && p.qty>0 ? '<button type="button" class="pcar" data-act="addc" data-id="'+esc(p.id)+'"'+(p.qty<p.pack?' disabled':'')+'>+ كرتونة ('+fmt(p.pack)+' قطعة) · '+money(round(p.pack*p.price))+'</button>' : '')+'</li>';
     }).join('') : '<li class="note">'+(products.size ? 'مفيش صنف بالاسم ده.' : 'لسه مفيش أصناف. افتح «المخزن» وضيف أول صنف.')+'</li>';
 
@@ -263,7 +264,7 @@
     var ids = Object.keys(cart), total = 0;
     $('#cart').innerHTML = ids.length ? ids.map(function(id){
       var p = products.get(id), q2 = cart[id], sub = q2*p.price; total += sub;
-      return '<li class="cline"><div class="cl-name">'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+fmt(p.price)+' × '+fmt(q2)+' = '+money(sub)+'</small></div>'+
+      return '<li class="cline"><div class="cl-name">'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+fmt(p.price)+' × '+fmt(q2)+(p.unit?' '+esc(p.unit):'')+' = '+money(sub)+'</small></div>'+
         '<div class="step"><button type="button" data-act="dec" data-id="'+esc(id)+'" aria-label="نقّص">−</button>'+
         '<input type="number" inputmode="decimal" min="0" step="any" value="'+q2+'" data-qty="'+esc(id)+'" aria-label="الكمية">'+
         '<button type="button" data-act="inc" data-id="'+esc(id)+'" aria-label="زوّد">+</button></div>'+
@@ -294,9 +295,9 @@
     box.innerHTML = list.map(function(p){
       var del = pendingDel===p.id;
       return '<li class="item"><div class="item-head"><strong>'+esc(p.name)+'</strong>'+statusOf(p)+'</div>'+(p.cost!=null && isOwner()?'<div class="pmeta">سعر الجملة: '+money(p.cost)+'</div>':'')+(p.barcode?'<div class="pmeta">باركود: '+esc(p.barcode)+'</div>':'')+(p.pack>1?'<div class="pmeta">الكرتونة: '+fmt(p.pack)+' قطعة'+(p.qty>=p.pack?' · فاضل ≈ '+fmt(Math.floor(p.qty/p.pack))+' كرتونة و '+fmt(round(p.qty%p.pack))+' قطعة':'')+'</div>':'')+
-        '<dl class="stats"><div><dt>السعر</dt><dd>'+money(p.price)+'</dd></div>'+
+        '<dl class="stats"><div><dt>السعر'+(p.unit?' (لل'+esc(p.unit)+')':'')+'</dt><dd>'+money(p.price)+'</dd></div>'+
         '<div><dt>اتباع</dt><dd>'+fmt(p.sold)+'</dd></div>'+
-        '<div><dt>فاضل</dt><dd>'+fmt(p.qty)+'</dd></div></dl>'+
+        '<div><dt>فاضل</dt><dd>'+fmt(p.qty)+(p.unit?' '+esc(p.unit):'')+'</dd></div></dl>'+
         '<div class="item-actions">'+
         '<form class="restock" data-id="'+esc(p.id)+'"><input name="n" type="number" inputmode="decimal" min="0" step="any" placeholder="'+(p.pack>1?'عدد':'كمية جديدة')+'" aria-label="كمية التوريد لـ '+esc(p.name)+'">'+(p.pack>1?'<select name="u" aria-label="الوحدة"><option value="c">كرتونة</option><option value="p">قطعة</option></select>':'')+'<button class="btn" type="submit">+ توريد</button></form>'+
         '<button type="button" class="btn" data-act="edit" data-id="'+esc(p.id)+'">تعديل</button>'+
@@ -360,7 +361,7 @@
     $('#recent').innerHTML = recent.length ? recent.map(function(s){
       var when = dt(s.ts);
       var tag = (s.edits && s.edits.length) ? '<span class="pill warn">اتعدّلت</span>' : '';
-      return '<li><span class="when">'+esc(invCode(s))+' · '+when+'</span><span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack)); }).join('، ')+'</span><span class="sum">'+money(s.total)+'</span>'+
+      return '<li><span class="when">'+esc(invCode(s))+' · '+when+'</span><span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+'</span><span class="sum">'+money(s.total)+'</span>'+
         '<div class="inv-act"><button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button><button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
     }).join('') : '<li class="note">مفيش فواتير في الفترة دي.</li>';
   }

@@ -1,4 +1,4 @@
-window.APP_VER = 'v12';
+window.APP_VER = 'v14';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -179,7 +179,7 @@ function cloudDataStart(shopId){
   },fail);
   /* سجل الأمان: على السيرفر، بيظهر على كل الأجهزة */
   db.collection('audit').orderBy('ts','desc').limit(400).onSnapshot(function(snap){
-    var list = snap.docs.map(function(d){ return Object.assign({},d.data(),{id:d.id}); }).reverse();
+    var list = snap.docs.map(function(d){ return Object.assign({},d.data(),{id:d.id}); }).filter(function(e){ return !e.old; }).reverse();
     list.forEach(function(e,i){ e.n = i+1; });
     aud = list; cloudMeta('a',snap); cloudAuditMigrate(shopId);
     render();
@@ -268,14 +268,16 @@ function cloudAll(cb){
   if(mode!=='cloud' || !db || !db.listAll){ cb(sales,aud); return; }
   toast('بجيب كل البيانات من السيرفر…');
   Promise.all([db.listAll('sales'),db.listAll('audit')]).then(function(r){
-    var A = r[1].sort(function(a,b){ return a.ts-b.ts; }); A.forEach(function(e,i){ e.n = i+1; });
+    var A = r[1].filter(function(e){ return !e.old; }).sort(function(a,b){ return a.ts-b.ts; }); A.forEach(function(e,i){ e.n = i+1; });
     cb(r[0].sort(function(a,b){ return b.ts-a.ts; }),A,true);
   },function(){ toast('محتاج نت عشان أجيب النسخة الكاملة. جرّب تاني لما النت يرجع.',true); });
 }
 var cloudLastBackup = 0;
 function cloudMarkBackup(){ if(mode==='cloud' && db){ cloudLastBackup = Date.now(); db.doc('meta/backup').set({ts:cloudLastBackup}); } }
 var cloudAudDone = false;
+/* اتلغى: كان بيرفع سجل الجهاز المحلي (ممكن يبقى من محل تاني) على أي محل بيدخل من نفس الجهاز، وده كان بيخلط سجلات المحلات */
 function cloudAuditMigrate(shopId){
+  return;
   if(cloudAudDone) return; cloudAudDone = true;
   try{
     var flag = 'makhzani-aud-migrated', key = localStorage.getItem(flag);
@@ -403,7 +405,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=12').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=14').catch(function(){}); });
   }
 }catch(e){}
 

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=14">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -25,7 +25,7 @@ setTimeout(function(){
     var d=document.createElement('div');
     d.style.cssText='background:#8F2A1F;color:#fff;padding:12px;margin:8px;border-radius:8px;font-size:14px';
     var v=(navigator.userAgent.match(/Chrome\/(\d+)/)||[])[1];
-    d.textContent='البرنامج مش شغال. تأكد إن كل الملفات (index.html و style.css و fb.js و app1.js و app2.js و app3.js و cloud.js و app4.js) في نفس الفولدر واتنسخوا كاملين، وابعت الشريط ده لـ Claude. '+(window.__err?'(الخطأ: '+window.__err+') ':'')+'(Chrome '+(v||'مش معروف')+')';
+    d.textContent='البرنامج مش شغال. تأكد إن كل الملفات (index.html و style.css و fb.js و app1.js و app2.js و app3.js و cloud.js و app4.js و app5.js) في نفس الفولدر واتنسخوا كاملين، وابعت الشريط ده لـ Claude. '+(window.__err?'(الخطأ: '+window.__err+') ':'')+'(Chrome '+(v||'مش معروف')+')';
     document.body.insertBefore(d,document.body.firstChild);
   }
 },15000);
@@ -128,6 +128,10 @@ setTimeout(function(){
             <input id="f-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="0">
           </div>
           <div>
+            <label for="f-unit">الوحدة (بتتباع بإيه؟)</label>
+            <select id="f-unit"><option value="">قطعة</option><option>متر</option><option>كيلو</option><option>جرام</option><option>لتر</option></select>
+          </div>
+          <div>
             <label for="f-pack">عدد القطع في الكرتونة (اختياري)</label>
             <input id="f-pack" type="number" inputmode="numeric" min="2" step="1" placeholder="مثلا: 12">
           </div>
@@ -160,12 +164,12 @@ setTimeout(function(){
         <p class="hint">بتتحفظ لوحدها أول ما تغيّر أي خانة.</p>
       </div>
       <div class="panel" id="imp-panel" hidden>
-        <h2>استيراد أصناف من Excel</h2>
-        <p class="hint">لو عند المحل ملف Excel بأصنافه، ارفعه هنا والبرنامج يضيف كل الأصناف مرة واحدة بدل ما تكتبها واحد واحد. نزّل النموذج لو عايز تملاه بنفسك.</p>
+        <h2>استيراد أصناف من Excel أو Word</h2>
+        <p class="hint">لو عند المحل ملف Excel بأصنافه، (أو ملف Word فيه الأصناف في جدول) ارفعه هنا والبرنامج يضيف كل الأصناف مرة واحدة بدل ما تكتبها واحد واحد. نزّل النموذج لو عايز تملاه بنفسك.</p>
         <div class="row-actions">
-          <button class="btn primary" id="imp-pick" type="button">اختار ملف Excel أو CSV</button>
+          <button class="btn primary" id="imp-pick" type="button">اختار ملف Excel أو Word أو CSV</button>
           <button class="btn" id="imp-tpl" type="button">نزّل نموذج Excel</button>
-          <input id="imp-file" type="file" accept=".xlsx,.csv,.txt,text/csv" hidden>
+          <input id="imp-file" type="file" accept=".xlsx,.docx,.csv,.txt,text/csv" hidden>
         </div>
         <p class="hint" id="imp-msg" hidden></p>
         <div id="imp-map" hidden>
@@ -177,6 +181,7 @@ setTimeout(function(){
             <div><label for="imp-c-qty">عمود الكمية</label><select id="imp-c-qty"></select></div>
             <div><label for="imp-c-barcode">عمود الباركود</label><select id="imp-c-barcode"></select></div>
             <div><label for="imp-c-pack">عمود القطع في الكرتونة</label><select id="imp-c-pack"></select></div>
+            <div><label for="imp-c-unit">عمود الوحدة (متر / قطعة / كيلو…)</label><select id="imp-c-unit"></select></div>
             <div class="wide"><label for="imp-dup">لو الصنف موجود قبل كده (نفس الباركود أو الاسم)</label>
               <select id="imp-dup"><option value="skip">سيبه زي ما هو</option><option value="upd">حدّث بياناته من الملف</option></select></div>
           </div>
@@ -631,11 +636,12 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=12" charset="utf-8"></script>
-<script src="app1.js?v=12" charset="utf-8"></script>
-<script src="app2.js?v=12" charset="utf-8"></script>
-<script src="app3.js?v=12" charset="utf-8"></script>
-<script src="cloud.js?v=12" charset="utf-8"></script>
-<script src="app4.js?v=12" charset="utf-8"></script>
+<script src="fb.js?v=14" charset="utf-8"></script>
+<script src="app1.js?v=14" charset="utf-8"></script>
+<script src="app2.js?v=14" charset="utf-8"></script>
+<script src="app3.js?v=14" charset="utf-8"></script>
+<script src="cloud.js?v=14" charset="utf-8"></script>
+<script src="app4.js?v=14" charset="utf-8"></script>
+<script src="app5.js?v=14" charset="utf-8"></script>
 </body>
 </html>

@@ -314,7 +314,7 @@
         if(r>0) out += '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(r)+' قطعة</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(r*l.price))+'</td></tr>';
         return out;
       }
-      return '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(l.qty)+'</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(l.qty*l.price))+'</td></tr>';
+      return '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(l.qty)+(l.u?' '+esc(l.u):'')+'</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(l.qty*l.price))+'</td></tr>';
     }).join('');
     return '<div class="rc-shop">'+esc(shopCfg.name||'مخزني')+'</div>'+
       '<div class="rc-meta">'+dt(s.ts)+' · فاتورة '+esc(invCode(s))+'</div>'+
@@ -427,7 +427,7 @@
       var p = products.get(pid), q = cart[pid];
       if(!p || !(q>0)) return;
       if(q>p.qty){ bad = p; return; }
-      var ln = {pid:pid,name:p.name,qty:q,price:p.price,cost:(p.cost==null?null:p.cost)}; if(p.pack>1) ln.pack = p.pack; lines.push(ln);
+      var ln = {pid:pid,name:p.name,qty:q,price:p.price,cost:(p.cost==null?null:p.cost)}; if(p.pack>1) ln.pack = p.pack; if(p.unit) ln.u = p.unit; lines.push(ln);
       total += q*p.price;
       updated.push(Object.assign({},p,{qty:round(p.qty-q),sold:round((p.sold||0)+q),revenue:round((p.revenue||0)+q*p.price)}));
     });
@@ -568,13 +568,13 @@
     var ps = [], ss = [];
     d.products.forEach(function(p){
       if(p && p.id && typeof p.name==='string' && p.name){
-        ps.push({id:String(p.id),name:p.name,price:num(p.price,0),qty:num(p.qty,0),barcode:String(p.barcode||''),pack:(+p.pack>1?Math.floor(+p.pack):0),sold:num(p.sold,0),revenue:num(p.revenue,0),cost:((p.cost==null||!isFinite(+p.cost))?null:+p.cost),created:num(p.created,Date.now())});
+        ps.push({id:String(p.id),name:p.name,price:num(p.price,0),qty:num(p.qty,0),barcode:String(p.barcode||''),pack:(+p.pack>1?Math.floor(+p.pack):0),unit:String(p.unit||'').slice(0,12),sold:num(p.sold,0),revenue:num(p.revenue,0),cost:((p.cost==null||!isFinite(+p.cost))?null:+p.cost),created:num(p.created,Date.now())});
       }
     });
     d.sales.forEach(function(s){
       if(s && isFinite(+s.ts) && Array.isArray(s.lines)){
         var lines = s.lines.filter(function(l){ return l && l.pid; }).map(function(l){
-          var o = {pid:String(l.pid),name:String(l.name||''),qty:num(l.qty,0),price:num(l.price,0),cost:((l.cost==null||!isFinite(+l.cost))?null:+l.cost)}; if(+l.pack>1) o.pack = Math.floor(+l.pack); return o;
+          var o = {pid:String(l.pid),name:String(l.name||''),qty:num(l.qty,0),price:num(l.price,0),cost:((l.cost==null||!isFinite(+l.cost))?null:+l.cost)}; if(+l.pack>1) o.pack = Math.floor(+l.pack); if(l.u) o.u = String(l.u).slice(0,12); return o;
         });
         var eds = (Array.isArray(s.edits)?s.edits:[]).filter(function(x){ return x && isFinite(+x.ts); }).map(function(x){ return {ts:+x.ts,from:num(x.from,0),to:num(x.to,0),by:String(x.by||'')}; });
         var one = {id:String(s.id||uid()),ts:+s.ts,lines:lines,total:num(s.total,0)};
