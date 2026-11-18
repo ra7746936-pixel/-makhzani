@@ -911,19 +911,22 @@ function invSince(per){
   if(per==='month'){ d.setDate(1); return d.getTime(); }
   return 0;
 }
-function invRow(s,showCust){
+function invRow(s,showCust,ro){
   var tag = (s.edits && s.edits.length) ? '<span class="pill warn">اتعدّلت</span>' : '';
   var ct = (showCust!==false && s.cust) ? '<span class="cust-tag">· '+esc(s.cust.name)+'</span>' : '';
   var fee = s.fee>0 ? '<span class="pmeta"> · توصيل '+money(s.fee)+'</span>' : '';
   return '<li><span class="when"><span class="inv-num">'+esc(invCode(s))+'</span> · '+dt(s.ts)+(s.by ? ' · '+esc(s.by.name) : '')+ct+'</span>'+
     '<span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack)); }).join('، ')+fee+'</span><span class="sum">'+money(s.total)+'</span>'+
-    '<div class="inv-act"><button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button><button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
+    '<div class="inv-act">'+(ro ? '<span class="pill zero">قديمة (للعرض فقط)</span>' : '<button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button>')+'<button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
 }
 function renderInv(){
   var box = $('#inv-list'); if(!box || $('#v-inv').hidden) return;
   Array.prototype.forEach.call(document.querySelectorAll('[data-iper]'),function(b){ b.setAttribute('aria-pressed', b.dataset.iper===invPer ? 'true' : 'false'); });
   var t0 = invSince(invPer), q = invQ.trim().toLowerCase().replace(/^#/,'');
   var list = sales.filter(function(s){ return s.ts>=t0; });
+  var oldOn = invPer==='all' && mode==='cloud' && isOwner(), oldIds = {};
+  if(oldOn) list = list.concat(oldSales.filter(function(s){ return !sales.some(function(x){ return x.id===s.id; }); }));
+  oldSales.forEach(function(s){ oldIds[s.id] = 1; });
   if(q){
     list = list.filter(function(s){
       if(String(s.no||'')===q) return true;
@@ -937,13 +940,32 @@ function renderInv(){
     '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(list.length)+'</strong></div>'+
     '<div class="tile"><span>إجمالي الفواتير</span><strong>'+money(round(tot))+'</strong>'+(fees>0 ? '<small>منها توصيل '+money(round(fees))+'</small>' : '')+'</div>';
   var shown = list.slice(0,invLimit);
-  box.innerHTML = shown.length ? shown.map(function(s){ return invRow(s); }).join('') : '<li class="note">مفيش فواتير في الفترة دي'+(q ? ' بالبحث ده' : '')+'.</li>';
+  box.innerHTML = shown.length ? shown.map(function(s){ return invRow(s,true,!!oldIds[s.id] && !sales.some(function(x){ return x.id===s.id; })); }).join('') : '<li class="note">مفيش فواتير في الفترة دي'+(q ? ' بالبحث ده' : '')+'.</li>';
   $('#inv-more').hidden = list.length<=invLimit;
-  $('#inv-note').textContent = (invPer==='all' && mode==='cloud') ? 'بيعرض فواتير آخر 45 يوم. الأقدم منها موجودة في ملف النسخة الاحتياطية وExcel.' : '';
+  $('#inv-note').textContent = (invPer==='all' && mode==='cloud') ? (isOwner() ? 'بيعرض فواتير آخر 45 يوم. الأقدم منها محفوظة في الكلاود، وبتتحمّل بالزرار اللي تحت (للعرض والطباعة بس).' : 'بيعرض فواتير آخر 45 يوم.') : '';
+  var ob = $('#inv-old'); if(ob){
+    ob.hidden = !oldOn || oldDone;
+    ob.disabled = oldBusy; ob.textContent = oldBusy ? 'بيحمّل…' : (oldSales.length ? 'حمّل فواتير أقدم' : 'عرض الفواتير الأقدم من 45 يوم');
+  }
+}
+var oldSales = [], oldBusy = false, oldDone = false;
+window.oldSales = oldSales;
+function loadOldInv(){
+  if(oldBusy || mode!=='cloud' || !isOwner() || !db) return;
+  var cutoff = Date.now()-CLOUD_DAYS*86400000;
+  var last = oldSales.length ? oldSales[oldSales.length-1].ts : cutoff;
+  oldBusy = true; renderInv();
+  db.collection('sales').where('ts','<',Math.min(last,cutoff)).orderBy('ts','desc').limit(200).getOnce().then(function(rows){
+    rows.forEach(function(s){ if(s && Array.isArray(s.lines) && !oldSales.some(function(x){ return x.id===s.id; })) oldSales.push(s); });
+    oldSales.sort(function(a,b){ return b.ts-a.ts; });
+    if(rows.length<200) oldDone = true;
+    oldBusy = false; if(!rows.length) toast('مفيش فواتير أقدم'); renderInv();
+  },function(){ oldBusy = false; toast('معرفتش أحمّل. اتأكد من النت وجرّب تاني.',true); renderInv(); });
 }
 document.addEventListener('click',function(e){
   var b = e.target.closest('[data-iper]');
   if(b){ invPer = b.dataset.iper; invLimit = 50; render(); return; }
+  if(e.target.closest('#inv-old')){ loadOldInv(); return; }
   var m = e.target.closest('[data-act="invmore"]');
   if(m){ invLimit += 50; render(); }
 });

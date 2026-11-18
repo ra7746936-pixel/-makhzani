@@ -86,7 +86,11 @@
               orderBy: function(f,d){ q = F.query(q,F.orderBy(f,d)); return api; },
               limit: function(n){ q = F.query(q,F.limit(n)); return api; },
               where: function(f,op,v){ q = F.query(q,F.where(f,op,v)); return api; },
-              onSnapshot: function(ok,err){ return F.onSnapshot(q,ok,err); }
+              onSnapshot: function(ok,err){ return F.onSnapshot(q,ok,err); },
+              /* قراءة مرة واحدة من السيرفر (للفواتير القديمة) */
+              getOnce: function(){
+                return F.getDocsFromServer(q).then(function(r){ return r.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); });
+              }
             };
             return api;
           },

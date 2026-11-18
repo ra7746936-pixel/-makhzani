@@ -1,6 +1,6 @@
 /* مخزني - الجزء 2 من 3 (UTF-8، جنب index.html) */
   /* ---------- مرتجعات وتعديل الفواتير ---------- */
-  function findSale(id){ for(var i=0;i<sales.length;i++){ if(sales[i].id===id) return sales[i]; } return null; }
+  function findSale(id){ for(var i=0;i<sales.length;i++){ if(sales[i].id===id) return sales[i]; } var o = window.oldSales||[]; for(var j=0;j<o.length;j++){ if(o[j].id===id) return o[j]; } return null; }
   function maxFor(d){ var p = products.get(d.pid); return round(d.orig + (p ? p.qty : 0)); }
   function editFee(){ var v = parseFloat($('#ie-fee').value); return v>0 ? round(v) : 0; }
   function draftTotal(){ var t = 0; draft.forEach(function(d){ t += d.qty*d.price; }); return round(t+editFee()); }
