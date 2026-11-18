@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -151,8 +151,10 @@ setTimeout(function(){
         </form>
       </div>
       <div class="panel">
-        <h2>الأصناف اللي في المخزن</h2>
+        <h2>الأصناف اللي في المخزن <span id="s-count" class="pmeta"></span></h2>
+        <input id="s-q" type="search" placeholder="دوّر في المخزن بالاسم أو الباركود" aria-label="بحث في المخزن" autocomplete="off">
         <ul id="slist" class="slist"></ul>
+        <button type="button" class="btn" id="s-more" data-act="smore" hidden>اعرض أكتر</button>
       </div>
       <div class="panel" id="print-set">
         <h2>بيانات الفاتورة المطبوعة</h2>
@@ -636,12 +638,12 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=14" charset="utf-8"></script>
-<script src="app1.js?v=14" charset="utf-8"></script>
-<script src="app2.js?v=14" charset="utf-8"></script>
-<script src="app3.js?v=14" charset="utf-8"></script>
-<script src="cloud.js?v=14" charset="utf-8"></script>
-<script src="app4.js?v=14" charset="utf-8"></script>
-<script src="app5.js?v=14" charset="utf-8"></script>
+<script src="fb.js?v=15" charset="utf-8"></script>
+<script src="app1.js?v=15" charset="utf-8"></script>
+<script src="app2.js?v=15" charset="utf-8"></script>
+<script src="app3.js?v=15" charset="utf-8"></script>
+<script src="cloud.js?v=15" charset="utf-8"></script>
+<script src="app4.js?v=15" charset="utf-8"></script>
+<script src="app5.js?v=15" charset="utf-8"></script>
 </body>
 </html>

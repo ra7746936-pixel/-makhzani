@@ -152,12 +152,14 @@
       case 'exp-inv': exportInvoices(); break;
       case 'exp-sup': exportSupplier(); break;
       case 'seed': seedExamples(); break;
+      case 'smore': stockLimit += 100; renderStock(); break;
       case 'focusform': $('#f-name').focus(); break;
     }
   });
 
   $('#checkout').addEventListener('click',confirmSale);
   $('#q').addEventListener('input',renderSell);
+  $('#s-q').addEventListener('input',function(){ stockLimit = 50; renderStock(); });
   $('#q').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); scanEnter(); } });
   document.addEventListener('keydown',function(e){
     if(view!=='sell' || locked || !sess || e.ctrlKey || e.metaKey || e.altKey || !e.key || e.key.length!==1) return;

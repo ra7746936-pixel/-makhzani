@@ -12,7 +12,7 @@
   var products = new Map();
   var suppliers = new Map();
   var customers = new Map();
-  var selSup = null;
+  var selSup = null, stockLimit = 50;
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
   var lastOpts = '';
   var sales = [];
@@ -253,12 +253,14 @@
   function renderSell(){
     var q = ($('#q').value||'').trim().toLowerCase();
     var list = Array.from(products.values()).filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)>=0 || (p.barcode && String(p.barcode).toLowerCase().indexOf(q)>=0); }).sort(byName);
+    var sellTotal = list.length;
+    if(list.length>60) list = list.slice(0,60);
     $('#plist').innerHTML = list.length ? list.map(function(p){
       return '<li><button type="button" class="prow" data-act="add" data-id="'+esc(p.id)+'"'+(p.qty<=0?' disabled':'')+'>'+
         '<span class="pname">'+esc(p.name)+'</span>'+
         '<span class="pmeta">'+money(p.price)+(p.unit?' / '+esc(p.unit):'')+' · '+(p.qty<=0?'خلص':'فاضل '+fmt(p.qty)+(p.unit?' '+esc(p.unit):''))+'</span>'+
         '<span class="padd" aria-hidden="true">+</span></button>'+(p.pack>1 && p.qty>0 ? '<button type="button" class="pcar" data-act="addc" data-id="'+esc(p.id)+'"'+(p.qty<p.pack?' disabled':'')+'>+ كرتونة ('+fmt(p.pack)+' قطعة) · '+money(round(p.pack*p.price))+'</button>' : '')+'</li>';
-    }).join('') : '<li class="note">'+(products.size ? 'مفيش صنف بالاسم ده.' : 'لسه مفيش أصناف. افتح «المخزن» وضيف أول صنف.')+'</li>';
+    }).join('')+(sellTotal>list.length ? '<li class="note">فيه '+fmt(sellTotal-list.length)+' صنف تاني. اكتب في البحث أو امسح الباركود عشان تلاقيه.</li>' : '') : '<li class="note">'+(products.size ? 'مفيش صنف بالاسم ده.' : 'لسه مفيش أصناف. افتح «المخزن» وضيف أول صنف.')+'</li>';
 
     cleanCart();
     var ids = Object.keys(cart), total = 0;
@@ -284,9 +286,15 @@
   }
 
   function renderStock(){
-    var list = Array.from(products.values()).sort(byName);
+    var all = Array.from(products.values()).sort(byName), sq = (($('#s-q')||{}).value||'').trim().toLowerCase();
+    var list = sq ? all.filter(function(p){ return p.name.toLowerCase().indexOf(sq)>=0 || (p.barcode && String(p.barcode).toLowerCase().indexOf(sq)>=0); }) : all;
+    var cnt = $('#s-count'), more = $('#s-more');
+    if(cnt) cnt.textContent = all.length ? '(' + (sq ? fmt(list.length)+' من ' : '') + fmt(all.length) + ' صنف)' : '';
+    var shownN = list.length;
+    if(list.length>stockLimit) list = list.slice(0,stockLimit);
+    if(more){ more.hidden = shownN<=list.length; more.textContent = 'اعرض أكتر ('+fmt(shownN-list.length)+' باقي)'; }
     var box = $('#slist');
-    if(!list.length){
+    if(!all.length){
       box.innerHTML = '<li class="empty"><p>لسه مفيش أصناف في المخزن.</p><div class="row">'+
         '<button type="button" class="btn primary" data-act="focusform">ضيف أول صنف</button>'+
         '<button type="button" class="btn" data-act="seed">جرّب بأصناف تجريبية</button></div></li>';
@@ -352,6 +360,7 @@
       '<div class="tile"><span>صافي الربح '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(pr.profit)+'</strong><small>'+(pr.unknown ? 'من غير '+fmt(pr.unknown)+' سطر مفيهوش سعر جملة' : 'الإيراد − سعر الجملة')+'</small></div>'+
       '<div class="tile"><span>قطع اتباعت</span><strong>'+fmt(pcs)+'</strong></div>'+
       '<div class="tile"><span>قيمة اللي فاضل في المخزن</span><strong>'+money(stockVal)+'</strong></div>'+
+      '<div class="tile"><span>عدد الأصناف في المخزن</span><strong>'+fmt(products.size)+'</strong></div>'+
       '<div class="tile"><span>مستحق للموردين</span><strong>'+money(owed)+'</strong></div>'+
       '<div class="tile"><span>مستحق من العملاء (ديون)</span><strong>'+money(custOwed)+'</strong></div>';
     $('#rtable').innerHTML = r.rows.length ? r.rows.map(function(x){
