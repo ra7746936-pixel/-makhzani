@@ -1,4 +1,4 @@
-window.APP_VER = 'v21';
+window.APP_VER = 'v23';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -191,10 +191,13 @@ function cloudDataStart(shopId){
   },function(){});
   }
   /* أخطاء الكتابة (اشتراك منتهي، صنف اتمسح…) تظهر للمستخدم */
-  window.FB_ONERR = function(e){
+  window.FB_ONERR = function(e,info){
     var now = Date.now(); if(now-cloudErrAt<4000) return; cloudErrAt = now;
     var c = (e && e.code) || '';
-    toast(c==='permission-denied' ? (cashier ? 'العملية دي مش مسموحة للكاشير، أو الاشتراك موقوف.' : 'الحفظ اترفض: الاشتراك منتهي أو موقوف.') : c==='not-found' ? 'الصنف اتمسح من جهاز تاني.' : 'مشكلة في الحفظ ('+(c||(e&&e.message)||'؟')+')',true);
+    /* تفاصيل للتشخيص: نوع العملية والمجموعة (من غير رقم المستند) */
+    var wh = info ? ' ['+String(info).replace(/^(\w+) ([^\/]+)(\/.*)?$/,'$1 $2')+(c ? ' · '+c : '')+']' : (c ? ' ['+c+']' : '');
+    window.FB_LASTERR = {t:Date.now(),code:c,info:String(info||''),msg:(e&&e.message)||''};
+    toast(c==='permission-denied' ? (cashier ? 'العملية دي مش مسموحة للكاشير، أو الاشتراك موقوف.' : 'الحفظ اترفض: الاشتراك منتهي أو موقوف.')+wh : c==='not-found' ? 'الصنف اتمسح من جهاز تاني.' : 'مشكلة في الحفظ ('+(c||(e&&e.message)||'؟')+')',true);
   };
   return true;
 }
@@ -405,7 +408,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=21').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=23').catch(function(){}); });
   }
 }catch(e){}
 

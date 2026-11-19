@@ -253,6 +253,169 @@ $('#imp-go').addEventListener('click',function(){
   })();
 });
 
+/* ---------- استيراد عملاء / موردين من Excel أو Word (المالك بس) ---------- */
+/* كل صف = حركة في حساب الشخص. لو الاسم اتكرر في كذا صف (فاتورة لكل صف) الصفوف بتتجمّع على نفس الشخص. */
+var PARTY = {
+  cust:{plural:'العملاء',one:'عميل',map:function(){ return customers; },put:function(){ return putCustomer; },
+    hint:'ارفع ملف فيه أسماء العملاء (وتليفوناتهم وأرصدتهم لو موجودة). كل صف فيه مبلغ بيتسجل على حساب العميل، ولو العميل اتكرر في كذا صف (فاتورة لكل صف) البرنامج يجمعهم على نفس العميل. بعد كده اضغط على العميل من القايمة تلاقي حسابه وفواتيره.',
+    a:'عليه (العميل مدين للمحل)',b:'له (المحل مدين للعميل)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد له (استيراد)',log:'cust'},
+  sup:{plural:'الموردين',one:'مورد',map:function(){ return suppliers; },put:function(){ return putSupplier; },
+    hint:'ارفع ملف فيه أسماء الموردين (وتليفوناتهم وأرصدتهم لو موجودة). كل صف فيه مبلغ بيتسجل على حساب المورد، ولو المورد اتكرر في كذا صف البرنامج يجمعهم على نفس المورد.',
+    a:'له عندي (أنا مدين للمورد)',b:'ليا عنده (المورد مدين لي)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد ليا (استيراد)',log:'sup'}
+};
+var PF = [
+  {k:'phone',kw:['تليفون','موبايل','هاتف','محمول','جوال','phone','mobile','tel']},
+  {k:'date',kw:['تاريخ','date']},
+  {k:'bal',kw:['رصيد','مديونيه','مدين','عليه','باقي','متبقي','balance','due','اجمالي','مبلغ','amount']},
+  {k:'note',kw:['ملاحظ','فاتوره','رقم','note','invoice']},
+  {k:'name',kw:['اسم','عميل','مورد','شركه','name','customer','client','supplier','بيان']}
+];
+var pRows = {cust:null,sup:null}, pBusy = false;
+function pel(k,s){ return document.getElementById('pi-'+k+'-'+s); }
+function pMsg(k,t,bad){ var m = pel(k,'msg'); m.hidden = !t; m.textContent = t||''; m.style.color = bad ? 'var(--bad-ink)' : ''; }
+function pDate(v){
+  if(v==null || v==='') return 0;
+  var t = String(v).replace(/[٠-٩]/g,function(c){ return c.charCodeAt(0)-0x0660; }).trim(), n, p;
+  if(/^\d{5}(\.\d+)?$/.test(t)){ n = (parseFloat(t)-25569)*86400000; return (n>631152000000 && n<4102444800000) ? Math.round(n) : 0; }
+  p = t.split(/[\/\-.]/);
+  if(p.length>=3){
+    var a = parseInt(p[0],10), b = parseInt(p[1],10), c = parseInt(p[2],10);
+    if(!(a>0 && b>0 && c>0)) return 0;
+    var y, m, d;
+    if(a>31){ y = a; m = b; d = c; } else { d = a; m = b; y = c; }
+    if(y<100) y += 2000;
+    if(m>12 || d>31 || y<1990 || y>2100) return 0;
+    return new Date(y,m-1,d,12).getTime();
+  }
+  return 0;
+}
+function pGuess(head){
+  var used = {}, g = {}, hn = head.map(impNorm);
+  PF.forEach(function(f){
+    for(var i = 0; i < hn.length; i++){
+      if(used[i] || !hn[i]) continue;
+      if(f.kw.some(function(w){ return hn[i].indexOf(w)>=0; })){ g[f.k] = i; used[i] = true; return; }
+    }
+  });
+  return g;
+}
+function pFill(k,rows){
+  var head = rows[0].map(function(h){ return String(h==null?'':h).trim(); }), g = pGuess(head);
+  var w = Math.max.apply(null,rows.slice(0,50).map(function(r){ return r.length; }).concat([head.length]));
+  var opts = function(req){ var h = req ? '' : '<option value="-1">— مفيش —</option>'; for(var i = 0; i < w; i++) h += '<option value="'+i+'">'+esc(head[i] ? head[i] : 'عمود '+(i+1))+'</option>'; return h; };
+  pel(k,'c-name').innerHTML = opts(true); pel(k,'c-name').value = g.name!=null ? g.name : 0;
+  ['phone','bal','date','note'].forEach(function(f){ pel(k,'c-'+f).innerHTML = opts(false); pel(k,'c-'+f).value = g[f]!=null ? g[f] : -1; });
+  pel(k,'info').textContent = 'لقيت '+fmt(rows.length-1)+' صف في الملف. راجع إن كل عمود مختار صح، وبعدين اضغط استورد.';
+  pPreview(k);
+}
+function pParse(k){
+  var col = function(f){ return parseInt(pel(k,'c-'+f).value,10); }, c = {name:col('name'),phone:col('phone'),bal:col('bal'),date:col('date'),note:col('note')};
+  var flip = pel(k,'sign').value==='b' ? -1 : 1, rows = pRows[k], by = {}, order = [], bad = 0, i, r;
+  for(i = 1; i < rows.length; i++){
+    r = rows[i];
+    var name = String(r[c.name]==null ? '' : r[c.name]).trim().replace(/\s+/g,' ');
+    if(!name){ if(r.some(function(x){ return String(x||'').trim(); })) bad++; continue; }
+    var key = name.toLowerCase(), p = by[key];
+    if(!p){ p = by[key] = {name:name.slice(0,80),phone:'',ents:[]}; order.push(p); }
+    var ph = c.phone>=0 ? String(r[c.phone]==null ? '' : r[c.phone]).replace(/[^\d+]/g,'') : '';
+    if(ph && !p.phone) p.phone = ph.slice(0,20);
+    var amt = c.bal>=0 ? impNum(r[c.bal]) : NaN;
+    if(amt>0 || amt<0){
+      p.ents.push({amt:round(amt*flip),ts:(c.date>=0 ? pDate(r[c.date]) : 0),note:(c.note>=0 ? String(r[c.note]==null ? '' : r[c.note]).trim().slice(0,80) : '')});
+    }
+  }
+  return {people:order,bad:bad};
+}
+function pPreview(k){
+  if(!pRows[k]) return;
+  var r = pParse(k), owed = 0, cred = 0, ne = 0, ex = 0, m = PARTY[k].map();
+  r.people.forEach(function(p){
+    var has = false; m.forEach(function(x){ if(x.name.toLowerCase()===p.name.toLowerCase()) has = true; });
+    if(has) ex++;
+    p.ents.forEach(function(e){ ne++; if(e.amt>0) owed += e.amt; else cred += -e.amt; });
+  });
+  var P = PARTY[k];
+  pel(k,'prev').textContent = 'هيتستورد '+fmt(r.people.length)+' '+P.one+' ('+fmt(ne)+' حركة حساب): '+P.a+' '+money(round(owed))+(cred ? '، و'+P.b+' '+money(round(cred)) : '')+(ex ? '. منهم '+fmt(ex)+' موجودين قبل كده' : '')+(r.bad ? ' (و'+fmt(r.bad)+' صف من غير اسم هيتخطى)' : '')+'. مثال: '+r.people.slice(0,3).map(function(p){ return p.name; }).join('، ')+'.';
+  pel(k,'go').disabled = !r.people.length;
+}
+function pHandleFile(k,file){
+  pMsg(k,'بقرا الملف…'); pel(k,'map').hidden = true; pRows[k] = null;
+  var isX = /\.xlsx$/i.test(file.name), isD = /\.docx$/i.test(file.name);
+  if(/\.doc$/i.test(file.name)){ pMsg(k,'ملفات .doc القديمة مش بتتقري. افتح الملف في Word واحفظه بصيغة .docx (أو Excel).',true); return; }
+  var fr = new FileReader();
+  fr.onerror = function(){ pMsg(k,'معرفتش أقرا الملف.',true); };
+  fr.onload = function(){
+    var done = function(rows){
+      rows = (rows||[]).filter(function(r){ return r && r.some(function(x){ return String(x==null?'':x).trim(); }); });
+      if(rows.length<2){ pMsg(k,'الملف فاضي أو فيه صف العناوين بس.',true); return; }
+      if(rows.length>5001){ pMsg(k,'الملف كبير (أكتر من 5000 صف). قسّمه على ملفين.',true); return; }
+      pRows[k] = rows; pMsg(k,''); pFill(k,rows); pel(k,'map').hidden = false;
+    };
+    if(isD) impDocx(fr.result).then(done,function(e){ pMsg(k,e && e.message==='notable' ? 'ملف Word ده مفيهوش جدول. البيانات لازم تكون في جدول (صف عناوين وتحته الأسماء).' : 'معرفتش أقرا ملف Word. تأكد إنه .docx.',true); });
+    else if(isX) impXlsx(fr.result).then(done,function(){ pMsg(k,'معرفتش أقرا ملف Excel. تأكد إنه .xlsx، أو احفظه CSV.',true); });
+    else done(impCsv(new TextDecoder('utf-8').decode(new Uint8Array(fr.result))));
+  };
+  fr.readAsArrayBuffer(file);
+}
+function pGo(k){
+  if(pBusy || !pRows[k]) return;
+  if(!isOwner()){ toast('الاستيراد للمالك بس',true); return; }
+  if(!ready()) return;
+  var P = PARTY[k], m = P.map(), put = P.put(), r = pParse(k), dup = pel(k,'dup').value, byN = {}, i = 0, added = 0, upd = 0, skipped = 0, nEnt = 0, t0 = Date.now(), seq = 0;
+  m.forEach(function(x){ byN[x.name.toLowerCase()] = x; });
+  var mk = function(e){
+    var ts = e.ts || (t0 + (seq++)), base = {id:uid(),ts:ts,by:(sess?sess.name:'')};
+    if(k==='cust') return e.amt>0 ? Object.assign(base,{type:'debt',amount:e.amt,note:e.note||P.noteA}) : Object.assign(base,{type:'payment',amount:round(-e.amt),note:e.note||P.noteB});
+    return e.amt>0 ? Object.assign(base,{type:'purchase',pid:'',name:e.note||P.noteA,qty:1,cost:e.amt,total:e.amt,paid:0}) : Object.assign(base,{type:'payment',amount:round(-e.amt),note:e.note||P.noteB});
+  };
+  pBusy = true; pel(k,'go').disabled = true; holdRender(true);
+  (function step(){
+    var end = Math.min(i+40,r.people.length);
+    for(; i < end; i++){
+      var p = r.people[i], old = byN[p.name.toLowerCase()], ents = p.ents.map(mk);
+      ents.sort(function(a,b){ return a.ts-b.ts; });
+      if(old){
+        if(dup==='skip'){ skipped++; continue; }
+        put(Object.assign({},old,{phone:old.phone||p.phone,entries:(old.entries||[]).concat(ents)})); upd++; nEnt += ents.length;
+      } else {
+        var np = {id:uid(),name:p.name,phone:p.phone,entries:ents,created:Date.now()};
+        put(np); byN[p.name.toLowerCase()] = np; added++; nEnt += ents.length;
+      }
+    }
+    pMsg(k,'بستورد… '+fmt(i)+' من '+fmt(r.people.length));
+    if(i<r.people.length){ setTimeout(step,30); return; }
+    logA(P.log,'استيراد '+P.plural+' من ملف: '+fmt(added)+' جديد، '+fmt(upd)+' اتحدّث، '+fmt(skipped)+' اتخطّى ('+fmt(nEnt)+' حركة حساب)');
+    pBusy = false; pRows[k] = null; pel(k,'map').hidden = true; holdRender(false);
+    pMsg(k,'تمام: اتضاف '+fmt(added)+' '+P.one+' جديد'+(upd ? '، واتضافت حركات على '+fmt(upd)+' موجودين' : '')+(skipped ? '، واتخطّى '+fmt(skipped)+' موجودين قبل كده' : '')+'. ('+fmt(nEnt)+' حركة حساب)');
+    toast('اتستورد '+fmt(added+upd)+' '+P.one);
+  })();
+}
+function pInit(k){
+  var P = PARTY[k], box = document.getElementById('pimp-'+k); if(!box) return;
+  var sel = function(f,l,req){ return '<div><label for="pi-'+k+'-c-'+f+'">'+l+'</label><select id="pi-'+k+'-c-'+f+'"></select></div>'; };
+  box.innerHTML = '<div class="panel"><h2>استيراد '+P.plural+' من Excel أو Word</h2><p class="hint">'+P.hint+'</p>'+
+    '<div class="row-actions"><button class="btn primary" id="pi-'+k+'-pick" type="button">اختار ملف Excel أو Word أو CSV</button><button class="btn" id="pi-'+k+'-tpl" type="button">نزّل نموذج Excel</button><input id="pi-'+k+'-file" type="file" accept=".xlsx,.docx,.csv,.txt,text/csv" hidden></div>'+
+    '<p class="hint" id="pi-'+k+'-msg" hidden></p>'+
+    '<div id="pi-'+k+'-map" hidden><p class="hint" id="pi-'+k+'-info"></p><div class="pform">'+
+      sel('name','عمود الاسم *')+sel('phone','عمود التليفون')+sel('bal','عمود المبلغ / الرصيد')+sel('date','عمود التاريخ')+sel('note','عمود الملاحظة / رقم الفاتورة')+
+      '<div class="wide"><label for="pi-'+k+'-sign">المبلغ الموجب في الملف معناه</label><select id="pi-'+k+'-sign"><option value="a">'+P.a+'</option><option value="b">'+P.b+'</option></select></div>'+
+      '<div class="wide"><label for="pi-'+k+'-dup">لو الاسم موجود قبل كده</label><select id="pi-'+k+'-dup"><option value="skip">سيبه زي ما هو (ومتضيفش حاجة)</option><option value="add">ضيف المبالغ دي على حسابه</option></select></div>'+
+    '</div><p class="hint" id="pi-'+k+'-prev"></p>'+
+    '<div class="row-actions"><button class="btn primary" id="pi-'+k+'-go" type="button">استورد '+P.plural+'</button><button class="btn ghost" id="pi-'+k+'-cancel" type="button">إلغاء</button></div></div></div>';
+  pel(k,'pick').addEventListener('click',function(){ pel(k,'file').click(); });
+  pel(k,'file').addEventListener('change',function(e){ var f = e.target.files[0]; e.target.value = ''; if(f) pHandleFile(k,f); });
+  pel(k,'cancel').addEventListener('click',function(){ pRows[k] = null; pel(k,'map').hidden = true; pMsg(k,''); });
+  ['c-name','c-phone','c-bal','c-date','c-note','sign'].forEach(function(f){ pel(k,f).addEventListener('change',function(){ pPreview(k); }); });
+  pel(k,'go').addEventListener('click',function(){ pGo(k); });
+  pel(k,'tpl').addEventListener('click',function(){
+    var rows = [['الاسم','التليفون','المبلغ','التاريخ','ملاحظة / رقم الفاتورة'],['أحمد محمود','01012345678',1500,'15/10/2026','فاتورة 120'],['محمد علي','',300,'','']];
+    var blob = xlsxFromSheets([[P.plural,rows,[24,16,12,14,24]]]), url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'makhzani-'+k+'-template.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+  });
+}
+pInit('cust'); pInit('sup');
+
 /* نسخة كاملة + ملف Excel مقروء (لرفعهم على Drive) */
 window.mkBackupBundle = function(cb){ mkBackupData(function(data){ cb(data, buildExcelBlob(data.sales||[])); }); };
 
