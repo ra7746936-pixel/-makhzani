@@ -363,7 +363,7 @@
     var cnt = function(a){ return ac.filter(function(e){ return e.act===a; }); };
     var canc = cnt('cancel'), cv = 0;
     canc.forEach(function(e){ cv += (e.x && e.x.total) || 0; });
-    var low = 0; products.forEach(function(p){ if(p.qty<=LOW) low++; });
+    var low = 0; products.forEach(function(p){ if(!p.svc && p.qty<=LOW) low++; });
     return {n:td.length,total:round(tot),profit:pr.profit,unknown:pr.unknown,cancels:canc.length,cancelVal:round(cv),edits:cnt('edit').length,delp:cnt('delp').length,stk:cnt('stock').length,fails:cnt('fail').length,closes:cnt('close'),low:low};
   }
   function buildSummary(){
@@ -447,7 +447,7 @@
   function renderCount(){
     $('#cnt-box').hidden = !countDraft;
     if(!countDraft) return;
-    var list = Array.from(products.values()).sort(byName);
+    var list = Array.from(products.values()).filter(function(p){ return !p.svc; }).sort(byName);
     $('#cnt-body').innerHTML = list.map(function(p){
       var v = countDraft[p.id], has = (v!==undefined && v!==''), df = has ? round(v-p.qty) : null;
       return '<tr><td>'+esc(p.name)+'</td><td class="n">'+fmt(p.qty)+'</td><td class="n"><input type="number" inputmode="decimal" min="0" step="any" data-cnt="'+esc(p.id)+'" value="'+(has ? v : '')+'"></td>'+

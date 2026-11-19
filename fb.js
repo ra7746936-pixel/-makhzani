@@ -115,6 +115,24 @@
               }
             };
           },
+          /* كتابة مستندات كتير دفعات (200 في الطلب الواحد): أسرع وبيستهلك نت أقل. لو دفعة اترفضت بنكتب مستنداتها واحد واحد */
+          setMany: function(col,docs){
+            for(var i = 0; i < docs.length; i += 200){
+              (function(chunk){
+                var n = chunk.length;
+                try{
+                  var b = F.writeBatch(fs);
+                  chunk.forEach(function(d){ b.set(F.doc(fs,root+col+'/'+d.id),clean(d)); });
+                  window.FB_PEND += n; fire('fb-pend');
+                  b.commit().then(function(){ window.FB_PEND -= n; fire('fb-pend'); },function(e){
+                    window.FB_PEND -= n; fire('fb-pend');
+                    chunk.forEach(function(d){ try{ track(F.setDoc(F.doc(fs,root+col+'/'+d.id),clean(d))); }catch(x){ onErr(x); } });
+                  });
+                }catch(e){ onErr(e); }
+              })(docs.slice(i,i+200));
+            }
+            return Promise.resolve();
+          },
           /* زيادة أو نقص رقم من غير ما نكتب فوق تعديل جهاز تاني */
           inc: function(path,deltas){
             var o = {};

@@ -164,14 +164,16 @@ function impParse(){
     var bc = c.barcode>=0 ? String(r[c.barcode]==null ? '' : r[c.barcode]).trim() : '';
     var kb = bc ? 'b'+bc : '', kn = 'n'+name.toLowerCase();
     if((kb && seen[kb]) || seen[kn]){ bad++; continue; } if(kb) seen[kb] = 1; seen[kn] = 1;
-    items.push({name:name,price:round(price),qty:(qty>=0 ? round(qty) : 0),cost:(cost>=0 ? round(cost) : null),pack:(pk>1 ? pk : 0),unit:un,hasUnit:(c.unit>=0),barcode:bc,hasQty:(c.qty>=0 && qty>=0),hasCost:(c.cost>=0 && cost>=0)});
+    var svc = qty>=99999;   /* البرامج القديمة بتحط رقم كبير (99999 أو أكتر) للخدمات اللي ملهاش مخزون، زي الإيجار */
+    items.push({svc:svc,name:name,price:round(price),qty:(svc ? SVC_QTY : qty>=0 ? round(qty) : 0),cost:(cost>=0 ? round(cost) : null),pack:(pk>1 ? pk : 0),unit:un,hasUnit:(c.unit>=0),barcode:bc,hasQty:(c.qty>=0 && qty>=0),hasCost:(c.cost>=0 && cost>=0)});
   }
   return {items:items,bad:bad};
 }
 function impPreview(){
   if(!impRows) return;
-  var r = impParse(), f = r.items.slice(0,3).map(function(x){ return x.name+' — بيع '+fmt(x.price)+(x.cost!=null ? ' / جملة '+fmt(x.cost) : '')+(x.qty ? ' — كمية '+fmt(x.qty)+(x.unit ? ' '+x.unit : '') : ''); }).join('  |  ');
-  $('#imp-prev').textContent = 'هيتستورد '+fmt(r.items.length)+' صنف'+(r.bad ? ' (و'+fmt(r.bad)+' صف هيتخطى: اسم فاضي أو سعر غلط أو مكرر)' : '')+(f ? '. مثال: '+f : '.');
+  var r = impParse(), f = r.items.slice(0,3).map(function(x){ return x.name+' — بيع '+fmt(x.price)+(x.cost!=null ? ' / جملة '+fmt(x.cost) : '')+(x.svc ? ' — خدمة' : (x.qty ? ' — كمية '+fmt(x.qty)+(x.unit ? ' '+x.unit : '') : '')); }).join('  |  ');
+  var svcN = r.items.filter(function(x){ return x.svc; }).length;
+  $('#imp-prev').textContent = 'هيتستورد '+fmt(r.items.length)+' صنف'+(svcN ? ' (منهم '+fmt(svcN)+' خدمة: كميتهم 99999 أو أكتر فهتتحول لـ«صنف خدمة» من غير مخزون)' : '')+(r.bad ? ' (و'+fmt(r.bad)+' صف هيتخطى: اسم فاضي أو سعر غلط أو مكرر)' : '')+(f ? '. مثال: '+f : '.');
   $('#imp-go').disabled = !r.items.length;
 }
 function impHandleFile(file){
@@ -207,7 +209,7 @@ $('#imp-go').addEventListener('click',function(){
   if(impBusy || !impRows) return;
   if(!isOwner()){ toast('الاستيراد للمالك بس',true); return; }
   if(!ready()) return;
-  var r = impParse(), mode2 = $('#imp-dup').value, byB = {}, byN = {}, added = 0, upd = 0, skipped = 0, i = 0;
+  var r = impParse(), mode2 = $('#imp-dup').value, byB = {}, byN = {}, added = 0, upd = 0, skipped = 0, i = 0, newBatch = [];
   products.forEach(function(p){ if(p.barcode) byB[p.barcode] = p; byN[p.name.toLowerCase()] = p; });
   impBusy = true; $('#imp-go').disabled = true; holdRender(true);
   (function step(){
@@ -216,14 +218,15 @@ $('#imp-go').addEventListener('click',function(){
       var x = r.items[i], old = (x.barcode && byB[x.barcode]) || byN[x.name.toLowerCase()];
       if(old){
         if(mode2==='skip'){ skipped++; continue; }
-        putProduct(Object.assign({},old,{name:x.name,price:x.price,unit:x.hasUnit ? x.unit : (old.unit||''),pack:x.hasUnit&&x.unit ? 0 : (x.pack||old.pack||0),barcode:x.barcode||old.barcode||'',qty:x.hasQty ? x.qty : old.qty,cost:x.hasCost ? x.cost : (old.cost==null ? null : old.cost)})); upd++;
+        putProduct(Object.assign({},old,{name:x.name,price:x.price,unit:x.hasUnit ? x.unit : (old.unit||''),pack:x.hasUnit&&x.unit ? 0 : (x.pack||old.pack||0),barcode:x.barcode||old.barcode||'',svc:x.hasQty ? x.svc : !!old.svc,qty:x.hasQty ? x.qty : old.qty,cost:x.hasCost ? x.cost : (old.cost==null ? null : old.cost)})); upd++;
       } else {
-        var np = {id:uid(),name:x.name,price:x.price,qty:x.qty,cost:x.cost,barcode:x.barcode,pack:x.pack,unit:x.unit,sold:0,revenue:0,created:Date.now()+i};
-        putProduct(np); added++; if(np.barcode) byB[np.barcode] = np; byN[np.name.toLowerCase()] = np;
+        var np = {id:uid(),name:x.name,price:x.price,qty:x.qty,cost:x.cost,barcode:x.barcode,pack:x.pack,unit:x.unit,svc:x.svc,sold:0,revenue:0,created:Date.now()+i};
+        newBatch.push(np); products.set(np.id,np); added++; if(np.barcode) byB[np.barcode] = np; byN[np.name.toLowerCase()] = np;
       }
     }
     impMsg('بستورد… '+fmt(i)+' من '+fmt(r.items.length));
     if(i<r.items.length){ setTimeout(step,30); return; }
+    newBatch.forEach(function(p){ products.delete(p.id); }); putProductsBulk(newBatch);
     logA('addp','استيراد أصناف من Excel: '+fmt(added)+' جديد، '+fmt(upd)+' اتحدّث، '+fmt(skipped)+' اتخطّى');
     impBusy = false; impRows = null; $('#imp-map').hidden = true; holdRender(false);
     impMsg('تمام: اتضاف '+fmt(added)+' صنف جديد'+(upd ? '، واتحدّث '+fmt(upd) : '')+(skipped ? '، واتخطّى '+fmt(skipped)+' موجودين قبل كده' : '')+'.');

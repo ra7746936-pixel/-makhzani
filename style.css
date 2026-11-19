@@ -265,3 +265,6 @@ html.authing #app{display:none}
 #inv-q,#cu-q{width:100%;margin-bottom:10px}
 .recent .cust-tag{display:inline-block;margin-inline-start:6px;font-size:12px;opacity:.8}
 .inv-num{font-weight:700}
+.svc-row{grid-column:1/-1}
+.chk{display:flex;align-items:center;gap:.5rem;font-weight:600}
+.chk input{width:auto;min-height:0}

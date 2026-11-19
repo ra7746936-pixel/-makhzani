@@ -36,7 +36,7 @@
       case 'edit': {
         if(!p) return;
         editingId = id;
-        $('#f-name').value = p.name; $('#f-price').value = p.price; $('#f-cost').value = (p.cost==null?'':p.cost); $('#f-qty').value = p.qty; $('#f-barcode').value = p.barcode||''; $('#f-pack').value = p.pack>1 ? p.pack : ''; setUnitSel(p.unit||''); $('#f-ctn-wrap').hidden = true;
+        $('#f-name').value = p.name; $('#f-price').value = p.price; $('#f-cost').value = (p.cost==null?'':p.cost); $('#f-qty').value = p.svc ? '' : p.qty; $('#f-svc').checked = !!p.svc; svcToggle(); $('#f-barcode').value = p.barcode||''; $('#f-pack').value = p.pack>1 ? p.pack : ''; setUnitSel(p.unit||''); $('#f-ctn-wrap').hidden = true;
         $('#f-title').textContent = 'تعديل الصنف';
         $('#f-submit').textContent = 'حفظ التعديل';
         $('#f-qty-label').textContent = 'الفاضل دلوقتي';
@@ -203,12 +203,13 @@
     var qty = parseFloat($('#f-qty').value);
     var costV = parseFloat($('#f-cost').value), cost = costV>=0 ? round(costV) : null;
     var barcode = $('#f-barcode').value.trim();
-    var unit = $('#f-unit').value;
+    var unit = $('#f-unit').value, svc = $('#f-svc').checked;
+    if(svc){ qty = SVC_QTY; $('#f-pack').value = ''; $('#f-ctn').value = ''; }
     var packV = parseInt($('#f-pack').value,10), pack = packV>1 ? packV : 0;
     if(unit && (pack || parseFloat($('#f-ctn').value)>0)){ toast('الكرتونة للأصناف بالقطعة بس. امسح عدد القطع في الكرتونة أو اختار الوحدة «قطعة».',true); $('#f-pack').focus(); return; }
     if($('#f-pack').value.trim() && !pack){ toast('عدد القطع في الكرتونة لازم يكون 2 أو أكتر',true); $('#f-pack').focus(); return; }
     var ctn = parseFloat($('#f-ctn').value);
-    if(ctn>0){ if(!pack){ toast('اكتب عدد القطع في الكرتونة الأول',true); $('#f-pack').focus(); return; } qty = (qty>=0 ? qty : 0) + round(ctn*pack); }
+    if(!svc && ctn>0){ if(!pack){ toast('اكتب عدد القطع في الكرتونة الأول',true); $('#f-pack').focus(); return; } qty = (qty>=0 ? qty : 0) + round(ctn*pack); }
     if(barcode){
       var dupB = null;
       products.forEach(function(x){ if(x.barcode===barcode && x.id!==editingId) dupB = x; });
@@ -226,13 +227,13 @@
         if(old.price!==round(price)) ch.push('السعر '+fmt(old.price)+'←'+fmt(round(price)));
         if(oc!==cost) ch.push('سعر الجملة '+(oc==null ? '—' : fmt(oc))+'←'+(cost==null ? '—' : fmt(cost)));
         if((old.barcode||'')!==barcode) ch.push('الباركود');
-        if(old.qty!==round(qty)) logA('stock','تعديل كمية '+old.name+' من '+fmt(old.qty)+' إلى '+fmt(round(qty)),{pid:old.id,from:old.qty,to:round(qty)});
+        if(!svc && !old.svc && old.qty!==round(qty)) logA('stock','تعديل كمية '+old.name+' من '+fmt(old.qty)+' إلى '+fmt(round(qty)),{pid:old.id,from:old.qty,to:round(qty)});
         if(ch.length) logA('editp','تعديل صنف '+old.name+': '+ch.join('، '));
-        putProduct(Object.assign({},old,{name:name,price:round(price),cost:cost,qty:round(qty),barcode:barcode,pack:pack,unit:unit}));
+        putProduct(Object.assign({},old,{name:name,price:round(price),cost:cost,qty:round(qty),barcode:barcode,pack:pack,unit:unit,svc:svc}));
         toast('اتعدّل: '+name);
       } else {
         logA('addp','إضافة صنف: '+name+' بسعر '+money(round(price))+' وكمية '+fmt(round(qty)));
-        putProduct({id:uid(),name:name,price:round(price),qty:round(qty),cost:cost,barcode:barcode,pack:pack,unit:unit,sold:0,revenue:0,created:Date.now()});
+        putProduct({id:uid(),name:name,price:round(price),qty:round(qty),cost:cost,barcode:barcode,pack:pack,unit:unit,svc:svc,sold:0,revenue:0,created:Date.now()});
         toast('اتضاف: '+name);
       }
       resetForm();
@@ -431,7 +432,10 @@
     return new Blob(parts.concat(cen,[new Uint8Array(e)]),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
   function xmlEsc(s){
-    return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    s = String(s).slice(0,32000);
+    /* نشيل أي حرف مش مسموح في XML (محارف تحكم، علامات مكسورة، FFFE/FFFF) لأن Excel بيرفض الملف كله بسببها */
+    s = s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g,function(m){ return m.length>1 ? m.charAt(0) : ''; });
+    return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uFFFE\uFFFF]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
   function colName(i){ var s = ''; i++; while(i > 0){ var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
   function sheetXml(rows,widths){
@@ -443,7 +447,7 @@
       r.forEach(function(v,ci){
         if(v===null || v===undefined || v==='') return;
         var ref = colName(ci)+(ri+1), st = ri===0 ? ' s="1"' : '';
-        if(typeof v==='number' && isFinite(v)) x += '<c r="'+ref+'"'+st+'><v>'+v+'</v></c>';
+        if(typeof v==='number' && isFinite(v)) x += '<c r="'+ref+'"'+st+'><v>'+(Math.abs(v)<1e15 && (Math.abs(v)>=1e-6 || v===0) ? String(v) : String(+v.toPrecision(15)))+'</v></c>';
         else x += '<c r="'+ref+'"'+st+' t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(v)+'</t></is></c>';
       });
       x += '</row>';
@@ -452,7 +456,7 @@
   }
   function xlsxFromSheets(sheets){
     var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
-    var wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+    var wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="24000" windowHeight="12000"/></bookViews><sheets>';
     var wr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
     var files = [];
     sheets.forEach(function(s,i){
@@ -487,9 +491,9 @@
     var stockVal = 0;
     var itm = [['الصنف','سعر البيع','الكمية المتبقية','الحالة','القطع في الكرتونة','الكراتين المتبقية','سعر الجملة','قيمة المخزون (جملة)','الباركود','اتباع (قطعة)','إجمالي الإيراد','الوحدة']];
     prods.slice().sort(byName).forEach(function(p){
-      var hasC = !(p.cost==null || !isFinite(+p.cost)); if(hasC) stockVal += p.qty*p.cost;
-      var pk = p.pack>1 ? p.pack : 0, st = p.qty<=0 ? 'خلصان' : (p.qty<=LOW ? 'قرب يخلص' : 'متوفر');
-      itm.push([p.name,p.price,p.qty,st,pk||'',pk ? (Math.floor(p.qty/pk)+' كرتونة'+(round(p.qty%pk)>0 ? ' و '+round(p.qty%pk)+' قطعة' : '')) : '',hasC ? p.cost : '',hasC ? round(p.qty*p.cost) : '',p.barcode||'',p.sold||0,p.revenue||0,p.unit||'قطعة']);
+      var hasC = !(p.cost==null || !isFinite(+p.cost)); if(hasC && !p.svc) stockVal += p.qty*p.cost;
+      var pk = p.pack>1 ? p.pack : 0, st = p.svc ? 'خدمة' : p.qty<=0 ? 'خلصان' : (p.qty<=LOW ? 'قرب يخلص' : 'متوفر');
+      itm.push([p.name,p.price,p.svc ? '' : p.qty,st,pk||'',pk ? (Math.floor(p.qty/pk)+' كرتونة'+(round(p.qty%pk)>0 ? ' و '+round(p.qty%pk)+' قطعة' : '')) : '',hasC ? p.cost : '',hasC && !p.svc ? round(p.qty*p.cost) : '',p.barcode||'',p.sold||0,p.revenue||0,p.unit||'قطعة']);
     });
     var sup = [['المورد','التاريخ','النوع','الصنف','الكمية','سعر الوحدة','قيمة البضاعة','المدفوع','ملاحظة']];
     var bal = [['المورد','رقم التليفون','إجمالي البضاعة','المرتجع','المدفوع','الرصيد (موجب = له عندي / سالب = ليا عنده)']];
@@ -657,3 +661,12 @@
       toast('اتفعّل التطبيق لحد '+r.p.e);
     });
   });
+
+
+/* صنف خدمة: الكمية والكرتونة مش مطلوبين */
+function svcToggle(){
+  var on = $('#f-svc').checked;
+  ['f-qty','f-pack','f-ctn'].forEach(function(id){ var el = $('#'+id); if(el){ el.disabled = on; if(on) el.value = ''; } });
+}
+$('#f-svc').addEventListener('change',svcToggle);
+$('#pform').addEventListener('reset',function(){ setTimeout(svcToggle,0); });

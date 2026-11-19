@@ -12,7 +12,8 @@
   var products = new Map();
   var suppliers = new Map();
   var customers = new Map();
-  var selSup = null, stockLimit = 50;
+  var selSup = null, stockLimit = 50, SVC_QTY = 1000000000;
+  function leftTxt(p){ return p.svc ? 'خدمة' : 'فاضل '+fmt(p.qty)+(p.unit ? ' '+p.unit : ''); }
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
   var lastOpts = '';
   var sales = [];
@@ -106,6 +107,14 @@
     var added = ne.filter(function(e){ return !oid[e.id]; });
     var rest = Object.assign({},s); delete rest.entries;
     return db.upd('suppliers/'+s.id,rest,null,added.length ? {entries:added} : null);
+  }
+  /* إضافة أصناف كتير مرة واحدة (استيراد): في السحابة بتتبعت دفعات بدل صنف صنف، وده أسرع وبيستهلك نت أقل */
+  function putProductsBulk(arr){
+    if(mode==='cloud' && db.setMany){
+      arr.forEach(function(p){ products.set(p.id,p); });
+      enqueue(function(){ return db.setMany('products',arr); });
+      render();
+    } else arr.forEach(putProduct);
   }
   function putProduct(p){
     var old = products.get(p.id);
@@ -258,7 +267,7 @@
     $('#plist').innerHTML = list.length ? list.map(function(p){
       return '<li><button type="button" class="prow" data-act="add" data-id="'+esc(p.id)+'"'+(p.qty<=0?' disabled':'')+'>'+
         '<span class="pname">'+esc(p.name)+'</span>'+
-        '<span class="pmeta">'+money(p.price)+(p.unit?' / '+esc(p.unit):'')+' · '+(p.qty<=0?'خلص':'فاضل '+fmt(p.qty)+(p.unit?' '+esc(p.unit):''))+'</span>'+
+        '<span class="pmeta">'+money(p.price)+(p.unit?' / '+esc(p.unit):'')+' · '+(p.svc ? 'خدمة' : p.qty<=0?'خلص':'فاضل '+fmt(p.qty)+(p.unit?' '+esc(p.unit):''))+'</span>'+
         '<span class="padd" aria-hidden="true">+</span></button>'+(p.pack>1 && p.qty>0 ? '<button type="button" class="pcar" data-act="addc" data-id="'+esc(p.id)+'"'+(p.qty<p.pack?' disabled':'')+'>+ كرتونة ('+fmt(p.pack)+' قطعة) · '+money(round(p.pack*p.price))+'</button>' : '')+'</li>';
     }).join('')+(sellTotal>list.length ? '<li class="note">فيه '+fmt(sellTotal-list.length)+' صنف تاني. اكتب في البحث أو امسح الباركود عشان تلاقيه.</li>' : '') : '<li class="note">'+(products.size ? 'مفيش صنف بالاسم ده.' : 'لسه مفيش أصناف. افتح «المخزن» وضيف أول صنف.')+'</li>';
 
@@ -280,6 +289,7 @@
   }
 
   function statusOf(p){
+    if(p.svc) return '<span class="pill zero">خدمة</span>';
     if(p.qty<=0) return '<span class="pill bad">خلص</span>';
     if(p.qty<=LOW) return '<span class="pill warn">قرب يخلص</span>';
     return '<span class="pill ok">متوفر</span>';
@@ -305,7 +315,7 @@
       return '<li class="item"><div class="item-head"><strong>'+esc(p.name)+'</strong>'+statusOf(p)+'</div>'+(p.cost!=null && isOwner()?'<div class="pmeta">سعر الجملة: '+money(p.cost)+'</div>':'')+(p.barcode?'<div class="pmeta">باركود: '+esc(p.barcode)+'</div>':'')+(p.pack>1?'<div class="pmeta">الكرتونة: '+fmt(p.pack)+' قطعة'+(p.qty>=p.pack?' · فاضل ≈ '+fmt(Math.floor(p.qty/p.pack))+' كرتونة و '+fmt(round(p.qty%p.pack))+' قطعة':'')+'</div>':'')+
         '<dl class="stats"><div><dt>السعر'+(p.unit?' (لل'+esc(p.unit)+')':'')+'</dt><dd>'+money(p.price)+'</dd></div>'+
         '<div><dt>اتباع</dt><dd>'+fmt(p.sold)+'</dd></div>'+
-        '<div><dt>فاضل</dt><dd>'+fmt(p.qty)+(p.unit?' '+esc(p.unit):'')+'</dd></div></dl>'+
+        '<div><dt>فاضل</dt><dd>'+(p.svc ? '—' : fmt(p.qty)+(p.unit?' '+esc(p.unit):''))+'</dd></div></dl>'+
         '<div class="item-actions">'+
         '<form class="restock" data-id="'+esc(p.id)+'"><input name="n" type="number" inputmode="decimal" min="0" step="any" placeholder="'+(p.pack>1?'عدد':'كمية جديدة')+'" aria-label="كمية التوريد لـ '+esc(p.name)+'">'+(p.pack>1?'<select name="u" aria-label="الوحدة"><option value="c">كرتونة</option><option value="p">قطعة</option></select>':'')+'<button class="btn" type="submit">+ توريد</button></form>'+
         '<button type="button" class="btn" data-act="edit" data-id="'+esc(p.id)+'">تعديل</button>'+
@@ -330,7 +340,7 @@
     }
     products.forEach(function(p){ if(!rows.has(p.id)) rows.set(p.id,{name:p.name,sold:0,rev:0}); });
     var out = [];
-    rows.forEach(function(r,pid){ var p = products.get(pid); out.push({name:r.name,sold:r.sold,rev:r.rev,left:p?p.qty:null}); });
+    rows.forEach(function(r,pid){ var p = products.get(pid); out.push({name:r.name,sold:r.sold,rev:r.rev,left:(p && !p.svc)?p.qty:null}); });
     out.sort(function(a,b){ return (b.sold-a.sold) || a.name.localeCompare(b.name,'ar'); });
     return {rows:out,invoices:invoices,t0:t0};
   }
@@ -350,7 +360,7 @@
     var r = periodRows();
     var rev = 0, pcs = 0, stockVal = 0;
     r.rows.forEach(function(x){ rev += x.rev; pcs += x.sold; });
-    products.forEach(function(p){ stockVal += p.qty*p.price; });
+    products.forEach(function(p){ if(!p.svc) stockVal += p.qty*p.price; });
     var pr = profitFor(sales.filter(function(s){ return period==='all' || s.ts>=r.t0; }));
     var owed = 0, custOwed = 0;
     suppliers.forEach(function(s){ var b = supStats(s).bal; if(b>0) owed += b; });

@@ -568,7 +568,7 @@
     var ps = [], ss = [];
     d.products.forEach(function(p){
       if(p && p.id && typeof p.name==='string' && p.name){
-        ps.push({id:String(p.id),name:p.name,price:num(p.price,0),qty:num(p.qty,0),barcode:String(p.barcode||''),pack:(+p.pack>1?Math.floor(+p.pack):0),unit:String(p.unit||'').slice(0,12),sold:num(p.sold,0),revenue:num(p.revenue,0),cost:((p.cost==null||!isFinite(+p.cost))?null:+p.cost),created:num(p.created,Date.now())});
+        ps.push({id:String(p.id),name:p.name,price:num(p.price,0),qty:num(p.qty,0),barcode:String(p.barcode||''),pack:(+p.pack>1?Math.floor(+p.pack):0),unit:String(p.unit||'').slice(0,12),svc:!!p.svc,sold:num(p.sold,0),revenue:num(p.revenue,0),cost:((p.cost==null||!isFinite(+p.cost))?null:+p.cost),created:num(p.created,Date.now())});
       }
     });
     d.sales.forEach(function(s){
