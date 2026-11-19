@@ -161,11 +161,14 @@ function impParse(){
     var un = c.unit>=0 ? String(r[c.unit]==null ? '' : r[c.unit]).trim().slice(0,12) : '';
     if(/^(قطعه|قطعة|حبه|حبة|piece|pieces|pcs|pc|unit|units)$/i.test(un) || un==='-' || un==='0') un = '';
     if(un) pk = 0;
+    /* الأصناف بالجرام بتتشرى بالكيلو: سعر الجملة بيتقسم على 1000 عشان يبقى لكل جرام (بدقة أعلى لأن الرقم صغير) */
+    var gram = /^(جرام|جم|غرام|g|gr|gram|grams)$/i.test(un), kgDiv = gram ? (parseInt(($('#imp-kg')||{}).value,10)||1) : 1;
+    if(kgDiv>1 && cost>=0) cost = Math.round(cost/kgDiv*100000)/100000;
     var bc = c.barcode>=0 ? String(r[c.barcode]==null ? '' : r[c.barcode]).trim() : '';
     var kb = bc ? 'b'+bc : '', kn = 'n'+name.toLowerCase();
     if((kb && seen[kb]) || seen[kn]){ bad++; continue; } if(kb) seen[kb] = 1; seen[kn] = 1;
     var svc = qty>=99999;   /* البرامج القديمة بتحط رقم كبير (99999 أو أكتر) للخدمات اللي ملهاش مخزون، زي الإيجار */
-    items.push({svc:svc,name:name,price:round(price),qty:(svc ? SVC_QTY : qty>=0 ? round(qty) : 0),cost:(cost>=0 ? round(cost) : null),pack:(pk>1 ? pk : 0),unit:un,hasUnit:(c.unit>=0),barcode:bc,hasQty:(c.qty>=0 && qty>=0),hasCost:(c.cost>=0 && cost>=0)});
+    items.push({svc:svc,name:name,price:round(price),qty:(svc ? SVC_QTY : qty>=0 ? round(qty) : 0),cost:(cost>=0 ? (kgDiv>1 ? cost : round(cost)) : null),pack:(pk>1 ? pk : 0),unit:un,hasUnit:(c.unit>=0),barcode:bc,hasQty:(c.qty>=0 && qty>=0),hasCost:(c.cost>=0 && cost>=0)});
   }
   return {items:items,bad:bad};
 }
@@ -199,6 +202,7 @@ $('#imp-pick').addEventListener('click',function(){ $('#imp-file').click(); });
 $('#imp-file').addEventListener('change',function(e){ var f = e.target.files[0]; e.target.value = ''; if(f) impHandleFile(f); });
 $('#imp-cancel').addEventListener('click',function(){ impRows = null; $('#imp-map').hidden = true; impMsg(''); });
 ['name','price','cost','qty','barcode','pack','unit'].forEach(function(k){ $('#imp-c-'+k).addEventListener('change',impPreview); });
+$('#imp-kg').addEventListener('change',impPreview);
 /* مسح كل الأصناف: خطوتين (زرار ثم كتابة كلمة مسح) */
 $('#wipe-open').addEventListener('click',function(){ $('#wipe-confirm').hidden = false; $('#wipe-txt').value = ''; $('#wipe-go').disabled = true; $('#wipe-txt').focus(); });
 $('#wipe-cancel').addEventListener('click',function(){ $('#wipe-confirm').hidden = true; $('#wipe-txt').value = ''; });

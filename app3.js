@@ -142,6 +142,8 @@
   }
   function gate(){
     var au = $('#auth');
+    /* السحابة لسه بتحمّل البيانات ومفيش حد داخل: منفتحش شاشة البيع (كانت بتومض وبعدها تطلع شاشة الـ PIN). نعرض كارت تحميل لحد ما البيانات توصل */
+    if(mode==='pending' && !locked && !sess && window.CLOUD_ON){ showAuthLoading(); return; }
     if(mode==='db' || mode==='pending' || locked || sess){ au.hidden = true; setAuthClass(false); return; }
     showAuth();
   }
@@ -168,10 +170,18 @@
   }
 
   /* ---------- شاشة الدخول ---------- */
+  function showAuthLoading(){
+    $('#auth').hidden = false; setAuthClass(true);
+    ['au-user-wrap','au-pin-wrap','au-pin2-wrap','au-phone-wrap','au-code-wrap','au-forgot','au-back','au-go'].forEach(function(id){ var e = $('#'+id); if(e) e.hidden = true; });
+    $('#au-title').textContent = 'بيحمّل بيانات المحل…';
+    $('#au-msg').textContent = 'ثواني ويظهرلك تسجيل الدخول. لو التحميل طوّل، اتأكد من النت.';
+    $('#au-err').textContent = '';
+  }
   function showAuth(m){
     auMode = m || ((sec && sec.owner) ? 'login' : 'setup');
     $('#auth').hidden = false; setAuthClass(true);
     ['au-user-wrap','au-pin-wrap','au-pin2-wrap','au-phone-wrap','au-code-wrap','au-forgot','au-back'].forEach(function(id){ $('#'+id).hidden = true; });
+    $('#au-go').hidden = false;
     $('#au-err').textContent = ''; $('#au-pin').value = ''; $('#au-pin2').value = '';
     $('#au-pin-l').textContent = 'PIN';
     if(auMode==='setup'){
