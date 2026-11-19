@@ -125,6 +125,15 @@
     products.delete(id);
     persist(function(){ return db.doc('products/'+id).delete(); });
   }
+  /* مسح كل الأصناف مرة واحدة (المالك بس). الفواتير والعملاء والموردين مش بيتأثروا */
+  function removeAllProducts(){
+    var ids = []; products.forEach(function(p,id){ ids.push(id); });
+    products.clear();
+    if(mode==='cloud' && db.delMany) enqueue(function(){ return db.delMany('products',ids); });
+    else persist(function(){ var ch = Promise.resolve(); ids.forEach(function(id){ ch = ch.then(function(){ return db.doc('products/'+id).delete(); }); }); return ch; });
+    render();
+    return ids.length;
+  }
   function recordSale(sale,updated){
     updated.forEach(function(p){ products.set(p.id,p); });
     sales.unshift(sale);

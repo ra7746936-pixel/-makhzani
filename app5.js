@@ -199,6 +199,21 @@ $('#imp-pick').addEventListener('click',function(){ $('#imp-file').click(); });
 $('#imp-file').addEventListener('change',function(e){ var f = e.target.files[0]; e.target.value = ''; if(f) impHandleFile(f); });
 $('#imp-cancel').addEventListener('click',function(){ impRows = null; $('#imp-map').hidden = true; impMsg(''); });
 ['name','price','cost','qty','barcode','pack','unit'].forEach(function(k){ $('#imp-c-'+k).addEventListener('change',impPreview); });
+/* مسح كل الأصناف: خطوتين (زرار ثم كتابة كلمة مسح) */
+$('#wipe-open').addEventListener('click',function(){ $('#wipe-confirm').hidden = false; $('#wipe-txt').value = ''; $('#wipe-go').disabled = true; $('#wipe-txt').focus(); });
+$('#wipe-cancel').addEventListener('click',function(){ $('#wipe-confirm').hidden = true; $('#wipe-txt').value = ''; });
+$('#wipe-txt').addEventListener('input',function(){ $('#wipe-go').disabled = $('#wipe-txt').value.trim()!=='مسح'; });
+$('#wipe-go').addEventListener('click',function(){
+  if(!ready() || !isOwner()) return;
+  if($('#wipe-txt').value.trim()!=='مسح') return;
+  var n = products.size;
+  if(!n){ toast('المخزن فاضي أصلا'); $('#wipe-confirm').hidden = true; return; }
+  logA('delp','مسح كل الأصناف ('+fmt(n)+' صنف)',{all:n});
+  if(typeof editingId!=='undefined' && editingId) resetForm();
+  removeAllProducts();
+  $('#wipe-confirm').hidden = true; $('#wipe-txt').value = '';
+  toast('اتمسح '+fmt(n)+' صنف');
+});
 $('#imp-tpl').addEventListener('click',function(){
   var rows = [['اسم الصنف','سعر البيع','سعر الجملة','الكمية','الباركود','عدد القطع في الكرتونة','الوحدة'],['مياه 600 مل',5,3.5,48,'6221234567890',12,'قطعة'],['سلك كهربا 2.5',18,14,200,'',0,'متر']];
   var blob = xlsxFromSheets([['الأصناف',rows,[28,12,12,10,18,22,10]]]), url = URL.createObjectURL(blob), a = document.createElement('a');

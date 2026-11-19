@@ -133,6 +133,24 @@
             }
             return Promise.resolve();
           },
+          /* مسح مستندات كتير مرة واحدة (دفعات 200) */
+          delMany: function(col,ids){
+            for(var i = 0; i < ids.length; i += 200){
+              (function(chunk){
+                var n = chunk.length;
+                try{
+                  var b = F.writeBatch(fs);
+                  chunk.forEach(function(id){ b.delete(F.doc(fs,root+col+'/'+id)); });
+                  window.FB_PEND += n; fire('fb-pend');
+                  b.commit().then(function(){ window.FB_PEND -= n; fire('fb-pend'); },function(e){
+                    window.FB_PEND -= n; fire('fb-pend');
+                    chunk.forEach(function(id){ try{ track(F.deleteDoc(F.doc(fs,root+col+'/'+id))); }catch(x){ onErr(x); } });
+                  });
+                }catch(e){ onErr(e); }
+              })(ids.slice(i,i+200));
+            }
+            return Promise.resolve();
+          },
           /* زيادة أو نقص رقم من غير ما نكتب فوق تعديل جهاز تاني */
           inc: function(path,deltas){
             var o = {};

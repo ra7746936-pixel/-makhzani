@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=18">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -194,6 +194,19 @@ setTimeout(function(){
           <div class="row-actions">
             <button class="btn primary" id="imp-go" type="button">استورد الأصناف</button>
             <button class="btn ghost" id="imp-cancel" type="button">إلغاء</button>
+          </div>
+        </div>
+        <div class="wipe-box" id="wipe-box">
+          <h3>مسح كل الأصناف</h3>
+          <p class="hint">لو رفعت أصناف غلط وعايز تبدأ من الأول: ده بيمسح <b>كل الأصناف</b> من المخزن (والسحابة). الفواتير والعملاء والموردين مش بيتمسحوا. <b>مفيش رجوع</b>، فنزّل نسخة احتياطية الأول لو عندك شك.</p>
+          <button class="btn danger" id="wipe-open" type="button">مسح كل الأصناف…</button>
+          <div id="wipe-confirm" hidden>
+            <label for="wipe-txt">اكتب كلمة <b>مسح</b> عشان تأكد:</label>
+            <input id="wipe-txt" type="text" autocomplete="off" placeholder="مسح">
+            <div class="row-actions">
+              <button class="btn danger" id="wipe-go" type="button" disabled>أيوه، امسح كل الأصناف</button>
+              <button class="btn ghost" id="wipe-cancel" type="button">إلغاء</button>
+            </div>
           </div>
         </div>
       </div>
@@ -641,12 +654,12 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=16" charset="utf-8"></script>
-<script src="app1.js?v=16" charset="utf-8"></script>
-<script src="app2.js?v=16" charset="utf-8"></script>
-<script src="app3.js?v=16" charset="utf-8"></script>
-<script src="cloud.js?v=16" charset="utf-8"></script>
-<script src="app4.js?v=16" charset="utf-8"></script>
-<script src="app5.js?v=16" charset="utf-8"></script>
+<script src="fb.js?v=18" charset="utf-8"></script>
+<script src="app1.js?v=18" charset="utf-8"></script>
+<script src="app2.js?v=18" charset="utf-8"></script>
+<script src="app3.js?v=18" charset="utf-8"></script>
+<script src="cloud.js?v=18" charset="utf-8"></script>
+<script src="app4.js?v=18" charset="utf-8"></script>
+<script src="app5.js?v=18" charset="utf-8"></script>
 </body>
 </html>

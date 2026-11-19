@@ -316,14 +316,22 @@
       }
       return '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(l.qty)+(l.u?' '+esc(l.u):'')+'</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(l.qty*l.price))+'</td></tr>';
     }).join('');
-    return '<div class="rc-shop">'+esc(shopCfg.name||'مخزني')+'</div>'+
-      '<div class="rc-meta">'+dt(s.ts)+' · فاتورة '+esc(invCode(s))+'</div>'+
-      (s.cust ? '<div class="rc-meta">العميل: '+esc(s.cust.name)+'</div>' : '')+
-      '<table><thead><tr><th class="rn">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      (s.fee>0 ? '<div class="rc-fee"><span>خدمة التوصيل</span><span>'+money(s.fee)+'</span></div>' : '')+
-      '<div class="rc-total"><span>الإجمالي</span><strong>'+money(s.total)+'</strong></div>'+
-      (s.paid!=null && s.paid<s.total ? '<div class="rc-fee"><span>المدفوع</span><span>'+money(s.paid)+'</span></div><div class="rc-fee"><span>المتبقي على العميل</span><strong>'+money(round(s.total-s.paid))+'</strong></div>' : '')+
-      (shopCfg.foot ? '<div class="rc-foot">'+esc(shopCfg.foot)+'</div>' : '');
+    var cnt = s.lines.length;
+    var kv = function(k,v,cls){ return '<div class="rc-kv'+(cls?' '+cls:'')+'"><span>'+k+'</span><strong>'+v+'</strong></div>'; };
+    return '<div class="rc-sec rc-head"><div class="rc-shop">'+esc(shopCfg.name||'مخزني')+'</div></div>'+
+      '<div class="rc-sec rc-info">'+
+        kv('رقم الفاتورة',esc(invCode(s)))+
+        kv('التاريخ',dt(s.ts))+
+        (s.cust ? kv('العميل',esc(s.cust.name)) : '')+
+      '</div>'+
+      '<div class="rc-sec rc-items"><table><thead><tr><th class="rn">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="rc-sec rc-sum">'+
+        kv('عدد الأصناف',fmt(cnt))+
+        (s.fee>0 ? kv('خدمة التوصيل',money(s.fee)) : '')+
+        kv('الإجمالي',money(s.total),'rc-grand')+
+        (s.paid!=null && s.paid<s.total ? kv('المدفوع',money(s.paid))+kv('المتبقي على العميل',money(round(s.total-s.paid)),'rc-due') : '')+
+      '</div>'+
+      (shopCfg.foot ? '<div class="rc-sec rc-foot">'+esc(shopCfg.foot)+'</div>' : '');
   }
   function printSale(sid){
     var s = findSale(sid);
@@ -335,7 +343,9 @@
     st.textContent = '@page{size:'+mm+'mm auto;margin:0}';
     var rc = $('#receipt');
     rc.innerHTML = buildReceipt(s);
-    rc.style.width = (mm-8)+'mm';
+    /* عرض آمن: معظم الطابعات الحرارية بتطبع أقل من عرض الورق (80مم ≈ 72 فعلي، 58مم ≈ 48 فعلي) فبنسيب هامش من الجنبين */
+    rc.style.width = (mm===58 ? 44 : 66)+'mm';
+    rc.className = 'receipt'+(mm===58 ? ' r58' : '');
     var root = document.documentElement;
     if((' '+root.className+' ').indexOf(' printing ')<0) root.className += ' printing';
     var done = function(){

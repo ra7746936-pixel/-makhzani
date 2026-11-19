@@ -216,15 +216,25 @@ html.locked #app{display:none}
   html.printing body{padding:0;background:#fff;color:#000}
   html.printing body::before,html.printing #app,html.printing #toast,html.printing #lock{display:none!important}
   html.printing .receipt{display:block;margin:0 auto;padding:3mm 0;background:#fff;color:#000;font-family:Tahoma,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.45}
-  .receipt .rc-shop{text-align:center;font-weight:700;font-size:16px;margin-bottom:2px}
-  .receipt .rc-meta{text-align:center;font-size:11px;margin-bottom:6px}
-  .receipt table{width:100%;min-width:0;border-collapse:collapse}
-  .receipt th{font-size:11px;color:#000;border-bottom:1px dashed #000;padding:2px 1px;text-align:center}
-  .receipt td{padding:3px 1px;border-bottom:0;text-align:center;font-size:12px}
-  .receipt th.rn,.receipt td.rn{text-align:start;width:40%;overflow-wrap:anywhere}
-  .receipt .rc-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed #000;margin-top:4px;padding-top:4px;font-size:14px}
-  .receipt .rc-total strong{font-size:17px}
-  .receipt .rc-foot{text-align:center;margin-top:8px;font-size:11px}
+  .receipt .rc-sec{padding:4px 0;border-bottom:1px solid #000}
+  .receipt .rc-head{text-align:center;border-top:2px solid #000;border-bottom:2px solid #000;padding:5px 0}
+  .receipt .rc-shop{text-align:center;font-weight:700;font-size:17px}
+  .receipt .rc-kv{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:1px 0;font-size:12px}
+  .receipt .rc-kv span{flex:none}
+  .receipt .rc-kv strong{font-weight:600;text-align:end;overflow-wrap:anywhere}
+  .receipt .rc-sum{border-bottom:2px solid #000}
+  .receipt .rc-grand{border-top:1px dashed #000;margin-top:3px;padding-top:4px;font-size:15px}
+  .receipt .rc-grand span,.receipt .rc-grand strong{font-size:15px;font-weight:700}
+  .receipt .rc-due strong,.receipt .rc-due span{font-weight:700}
+  .receipt .rc-foot{text-align:center;font-size:11px;border-bottom:0;padding-top:6px}
+  .receipt table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed}
+  .receipt th{font-size:11px;color:#000;border-bottom:1px solid #000;padding:2px 1px;text-align:center;overflow-wrap:anywhere}
+  .receipt td{padding:3px 1px;border-bottom:1px dotted #999;text-align:center;font-size:12px;overflow-wrap:anywhere;word-break:break-word}
+  .receipt th.rn,.receipt td.rn{text-align:start;width:38%;overflow-wrap:anywhere}
+  .receipt tr{page-break-inside:avoid}
+  .receipt.r58 td,.receipt.r58 th{font-size:10px}
+  .receipt.r58 .rc-grand,.receipt.r58 .rc-grand span,.receipt.r58 .rc-grand strong{font-size:13px}
+  .receipt.r58 .rc-kv{font-size:11px}
 }
 
 /* الأمان */
@@ -268,3 +278,8 @@ html.authing #app{display:none}
 .svc-row{grid-column:1/-1}
 .chk{display:flex;align-items:center;gap:.5rem;font-weight:600}
 .chk input{width:auto;min-height:0}
+
+/* مسح كل الأصناف */
+.wipe-box{margin-top:18px;padding-top:12px;border-top:1px dashed var(--line)}
+.wipe-box h3{margin:0 0 4px;font-size:15px}
+#wipe-confirm{margin-top:10px}
