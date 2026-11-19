@@ -265,6 +265,7 @@ var PARTY = {
 };
 var PF = [
   {k:'phone',kw:['تليفون','موبايل','هاتف','محمول','جوال','phone','mobile','tel']},
+  {k:'addr',kw:['عنوان','address','منطقه','العنوان']},
   {k:'date',kw:['تاريخ','date']},
   {k:'bal',kw:['رصيد','مديونيه','مدين','عليه','باقي','متبقي','balance','due','اجمالي','مبلغ','amount']},
   {k:'note',kw:['ملاحظ','فاتوره','رقم','note','invoice']},
@@ -304,21 +305,23 @@ function pFill(k,rows){
   var w = Math.max.apply(null,rows.slice(0,50).map(function(r){ return r.length; }).concat([head.length]));
   var opts = function(req){ var h = req ? '' : '<option value="-1">— مفيش —</option>'; for(var i = 0; i < w; i++) h += '<option value="'+i+'">'+esc(head[i] ? head[i] : 'عمود '+(i+1))+'</option>'; return h; };
   pel(k,'c-name').innerHTML = opts(true); pel(k,'c-name').value = g.name!=null ? g.name : 0;
-  ['phone','bal','date','note'].forEach(function(f){ pel(k,'c-'+f).innerHTML = opts(false); pel(k,'c-'+f).value = g[f]!=null ? g[f] : -1; });
+  ['phone','addr','bal','date','note'].forEach(function(f){ pel(k,'c-'+f).innerHTML = opts(false); pel(k,'c-'+f).value = g[f]!=null ? g[f] : -1; });
   pel(k,'info').textContent = 'لقيت '+fmt(rows.length-1)+' صف في الملف. راجع إن كل عمود مختار صح، وبعدين اضغط استورد.';
   pPreview(k);
 }
 function pParse(k){
-  var col = function(f){ return parseInt(pel(k,'c-'+f).value,10); }, c = {name:col('name'),phone:col('phone'),bal:col('bal'),date:col('date'),note:col('note')};
+  var col = function(f){ return parseInt(pel(k,'c-'+f).value,10); }, c = {name:col('name'),phone:col('phone'),addr:col('addr'),bal:col('bal'),date:col('date'),note:col('note')};
   var flip = pel(k,'sign').value==='b' ? -1 : 1, rows = pRows[k], by = {}, order = [], bad = 0, i, r;
   for(i = 1; i < rows.length; i++){
     r = rows[i];
     var name = String(r[c.name]==null ? '' : r[c.name]).trim().replace(/\s+/g,' ');
     if(!name){ if(r.some(function(x){ return String(x||'').trim(); })) bad++; continue; }
     var key = name.toLowerCase(), p = by[key];
-    if(!p){ p = by[key] = {name:name.slice(0,80),phone:'',ents:[]}; order.push(p); }
+    if(!p){ p = by[key] = {name:name.slice(0,80),phone:'',addr:'',ents:[]}; order.push(p); }
     var ph = c.phone>=0 ? String(r[c.phone]==null ? '' : r[c.phone]).replace(/[^\d+]/g,'') : '';
     if(ph && !p.phone) p.phone = ph.slice(0,20);
+    var ad = c.addr>=0 ? String(r[c.addr]==null ? '' : r[c.addr]).trim().replace(/\s+/g,' ') : '';
+    if(ad && !p.addr) p.addr = ad.slice(0,160);
     var amt = c.bal>=0 ? impNum(r[c.bal]) : NaN;
     if(amt>0 || amt<0){
       p.ents.push({amt:round(amt*flip),ts:(c.date>=0 ? pDate(r[c.date]) : 0),note:(c.note>=0 ? String(r[c.note]==null ? '' : r[c.note]).trim().slice(0,80) : '')});
@@ -376,9 +379,9 @@ function pGo(k){
       ents.sort(function(a,b){ return a.ts-b.ts; });
       if(old){
         if(dup==='skip'){ skipped++; continue; }
-        put(Object.assign({},old,{phone:old.phone||p.phone,entries:(old.entries||[]).concat(ents)})); upd++; nEnt += ents.length;
+        put(Object.assign({},old,{phone:old.phone||p.phone,addr:old.addr||p.addr,entries:(old.entries||[]).concat(ents)})); upd++; nEnt += ents.length;
       } else {
-        var np = {id:uid(),name:p.name,phone:p.phone,entries:ents,created:Date.now()};
+        var np = {id:uid(),name:p.name,phone:p.phone,addr:p.addr,entries:ents,created:Date.now()};
         put(np); byN[p.name.toLowerCase()] = np; added++; nEnt += ents.length;
       }
     }
@@ -397,7 +400,7 @@ function pInit(k){
     '<div class="row-actions"><button class="btn primary" id="pi-'+k+'-pick" type="button">اختار ملف Excel أو Word أو CSV</button><button class="btn" id="pi-'+k+'-tpl" type="button">نزّل نموذج Excel</button><input id="pi-'+k+'-file" type="file" accept=".xlsx,.docx,.csv,.txt,text/csv" hidden></div>'+
     '<p class="hint" id="pi-'+k+'-msg" hidden></p>'+
     '<div id="pi-'+k+'-map" hidden><p class="hint" id="pi-'+k+'-info"></p><div class="pform">'+
-      sel('name','عمود الاسم *')+sel('phone','عمود التليفون')+sel('bal','عمود المبلغ / الرصيد')+sel('date','عمود التاريخ')+sel('note','عمود الملاحظة / رقم الفاتورة')+
+      sel('name','عمود الاسم *')+sel('phone','عمود التليفون')+sel('addr','عمود العنوان')+sel('bal','عمود المبلغ / الرصيد')+sel('date','عمود التاريخ')+sel('note','عمود الملاحظة / رقم الفاتورة')+
       '<div class="wide"><label for="pi-'+k+'-sign">المبلغ الموجب في الملف معناه</label><select id="pi-'+k+'-sign"><option value="a">'+P.a+'</option><option value="b">'+P.b+'</option></select></div>'+
       '<div class="wide"><label for="pi-'+k+'-dup">لو الاسم موجود قبل كده</label><select id="pi-'+k+'-dup"><option value="skip">سيبه زي ما هو (ومتضيفش حاجة)</option><option value="add">ضيف المبالغ دي على حسابه</option></select></div>'+
     '</div><p class="hint" id="pi-'+k+'-prev"></p>'+
@@ -405,11 +408,11 @@ function pInit(k){
   pel(k,'pick').addEventListener('click',function(){ pel(k,'file').click(); });
   pel(k,'file').addEventListener('change',function(e){ var f = e.target.files[0]; e.target.value = ''; if(f) pHandleFile(k,f); });
   pel(k,'cancel').addEventListener('click',function(){ pRows[k] = null; pel(k,'map').hidden = true; pMsg(k,''); });
-  ['c-name','c-phone','c-bal','c-date','c-note','sign'].forEach(function(f){ pel(k,f).addEventListener('change',function(){ pPreview(k); }); });
+  ['c-name','c-phone','c-addr','c-bal','c-date','c-note','sign'].forEach(function(f){ pel(k,f).addEventListener('change',function(){ pPreview(k); }); });
   pel(k,'go').addEventListener('click',function(){ pGo(k); });
   pel(k,'tpl').addEventListener('click',function(){
-    var rows = [['الاسم','التليفون','المبلغ','التاريخ','ملاحظة / رقم الفاتورة'],['أحمد محمود','01012345678',1500,'15/10/2026','فاتورة 120'],['محمد علي','',300,'','']];
-    var blob = xlsxFromSheets([[P.plural,rows,[24,16,12,14,24]]]), url = URL.createObjectURL(blob), a = document.createElement('a');
+    var rows = [['الاسم','التليفون','العنوان','المبلغ','التاريخ','ملاحظة / رقم الفاتورة'],['أحمد محمود','01012345678','شارع التحرير، الدقي',1500,'15/10/2026','فاتورة 120'],['محمد علي','','',300,'','']];
+    var blob = xlsxFromSheets([[P.plural,rows,[24,16,28,12,14,24]]]), url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url; a.download = 'makhzani-'+k+'-template.xlsx'; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); },1000);
   });
@@ -504,7 +507,7 @@ function renderCust(){
   if(selCust && !c) selCust = null;
   $('#cust-list-view').hidden = !!c; $('#cust-detail').hidden = !c;
   var q = custQ.trim().toLowerCase();
-  var list = Array.from(customers.values()).filter(function(x){ return !q || x.name.toLowerCase().indexOf(q)>=0 || (x.phone||'').indexOf(q)>=0; }).sort(byName);
+  var list = Array.from(customers.values()).filter(function(x){ return !q || x.name.toLowerCase().indexOf(q)>=0 || (x.phone||'').indexOf(q)>=0 || (x.addr||'').toLowerCase().indexOf(q)>=0; }).sort(byName);
   $('#custlist').innerHTML = list.length ? list.map(function(x){
     var inv = custInvoices(x.id), tot = 0; inv.forEach(function(s){ tot += s.total; });
     var cb = custBal(custStats(x).bal);
@@ -512,7 +515,7 @@ function renderCust(){
   }).join('') : '<li class="note">'+(q ? 'مفيش عميل بالاسم ده.' : 'لسه ماسجلتش عملاء. ضيف أول عميل من فوق.')+'</li>';
   if(c){
     var inv2 = custInvoices(c.id), t2 = 0; inv2.forEach(function(s){ t2 += s.total; });
-    $('#cud-name').textContent = c.name; $('#cud-phone').textContent = c.phone ? 'التليفون: '+c.phone : 'من غير تليفون';
+    $('#cud-name').textContent = c.name; $('#cud-phone').textContent = [c.phone ? 'التليفون: '+c.phone : 'من غير تليفون', c.addr ? 'العنوان: '+c.addr : ''].filter(Boolean).join(' · ');
     var cs = custStats(c), cb2 = custBal(cs.bal);
     $('#cud-tiles').innerHTML = '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(inv2.length)+'</strong></div><div class="tile"><span>إجمالي مشترياته</span><strong>'+money(round(t2))+'</strong></div><div class="tile"><span>اللي دفعه بعدين</span><strong>'+money(cs.paid)+'</strong></div><div class="tile"><span>الرصيد</span><strong>'+cb2[0]+'</strong></div>';
     $('#cud-owner').hidden = !isOwner();
@@ -543,8 +546,8 @@ $('#cdb-form').addEventListener('submit',function(e){
   logA('cust','دين قديم على '+c.name+': '+money(a)); $('#cdb-form').reset(); toast('اتسجل الدين'); render();
 });
 $('#cust').addEventListener('change',function(){ $('#paid-row').hidden = !$('#cust').value; if(!$('#cust').value) $('#paid').value = ''; });
-function addCustomer(name,phone){
-  var c = {id:uid(),name:name,phone:phone||'',created:Date.now()};
+function addCustomer(name,phone,addr){
+  var c = {id:uid(),name:name,phone:phone||'',addr:(addr||'').slice(0,160),created:Date.now()};
   logA('cust','ضاف عميل: '+name);
   putCustomer(c);
   return c;
@@ -556,7 +559,7 @@ $('#cform').addEventListener('submit',function(e){
   if(!name){ toast('اكتب اسم العميل',true); $('#cu-name').focus(); return; }
   var dup = Array.from(customers.values()).some(function(x){ return x.name===name && x.phone===$('#cu-phone').value.trim(); });
   if(dup){ toast('العميل ده متسجل قبل كده',true); return; }
-  var c = addCustomer(name,$('#cu-phone').value.trim());
+  var c = addCustomer(name,$('#cu-phone').value.trim(),$('#cu-addr').value.trim());
   $('#cform').reset(); toast('اتضاف العميل: '+name); selCust = c.id; render();
 });
 $('#cu-q').addEventListener('input',function(e){ custQ = e.target.value; renderCust(); });
@@ -575,14 +578,16 @@ document.addEventListener('click',function(e){
     if(!ready()) return;
     var n = window.prompt('اسم العميل:'); n = n ? n.trim() : ''; if(!n) return;
     var ph = window.prompt('التليفون (اختياري):') || '';
-    var c = addCustomer(n,ph.trim()); renderCustSel(); $('#cust').value = c.id; toast('اتضاف العميل: '+n);
+    var ad = window.prompt('العنوان (اختياري):') || '';
+    var c = addCustomer(n,ph.trim(),ad.trim()); renderCustSel(); $('#cust').value = c.id; toast('اتضاف العميل: '+n);
   }
   else if(act==='editcust'){
     var cc = selCust ? customers.get(selCust) : null; if(!cc || !isOwner()) return;
     var nn = window.prompt('اسم العميل:',cc.name); if(nn===null) return; nn = nn.trim(); if(!nn){ toast('الاسم مينفعش يبقى فاضي',true); return; }
     var pp = window.prompt('التليفون:',cc.phone||''); if(pp===null) return;
+    var aa = window.prompt('العنوان:',cc.addr||''); if(aa===null) return;
     logA('cust','تعديل عميل: '+cc.name+' ← '+nn);
-    putCustomer(Object.assign({},cc,{name:nn,phone:pp.trim()})); toast('اتحفظ'); render();
+    putCustomer(Object.assign({},cc,{name:nn,phone:pp.trim(),addr:aa.trim().slice(0,160)})); toast('اتحفظ'); render();
   }
   else if(act==='delcust'){
     var dc = selCust ? customers.get(selCust) : null; if(!dc || !isOwner()) return;

@@ -63,6 +63,15 @@
         }
         break;
       }
+      case 'editsup': {
+        var es = selSup ? suppliers.get(selSup) : null; if(!es || !ready()) break;
+        var en2 = window.prompt('اسم المورد:',es.name); if(en2===null) break; en2 = en2.trim(); if(!en2){ toast('الاسم مينفعش يبقى فاضي',true); break; }
+        var ep2 = window.prompt('التليفون:',es.phone||''); if(ep2===null) break;
+        var ea2 = window.prompt('العنوان:',es.addr||''); if(ea2===null) break;
+        logA('sup','تعديل مورد: '+es.name+' ← '+en2);
+        putSupplier(Object.assign({},es,{name:en2,phone:ep2.trim(),addr:ea2.trim().slice(0,160)})); toast('اتحفظ'); renderSup();
+        break;
+      }
       case 'opensup': selSup = id; pendingEntry = null; pendingSup = null; editEnt = null; renderSup(); break;
       case 'supback': selSup = null; pendingEntry = null; pendingSup = null; editEnt = null; renderSup(); break;
       case 'delsup': {
@@ -263,11 +272,12 @@
     if(!name){ toast('اكتب اسم المورد',true); $('#s-name').focus(); return; }
     var dup = Array.from(suppliers.values()).some(function(x){ return x.name===name; });
     if(dup){ toast('المورد ده متسجل قبل كده',true); return; }
-    var s = {id:uid(),name:name,phone:$('#s-phone').value.trim(),entries:[],created:Date.now()};
+    var s = {id:uid(),name:name,phone:$('#s-phone').value.trim(),addr:$('#s-addr').value.trim().slice(0,160),entries:[],created:Date.now()};
     $('#sform').reset();
-    selSup = s.id; pendingEntry = null;
+    pendingEntry = null;
     logA('sup','ضاف مورد: '+name);
     putSupplier(s);
+    selSup = s.id; renderSup();   /* بعد putSupplier عشان الريندر مايصفّرش الاختيار قبل ما المورد يتسجل */
     toast('اتضاف المورد: '+name);
   });
 
@@ -496,7 +506,7 @@
       itm.push([p.name,p.price,p.svc ? '' : p.qty,st,pk||'',pk ? (Math.floor(p.qty/pk)+' كرتونة'+(round(p.qty%pk)>0 ? ' و '+round(p.qty%pk)+' قطعة' : '')) : '',hasC ? p.cost : '',hasC && !p.svc ? round(p.qty*p.cost) : '',p.barcode||'',p.sold||0,p.revenue||0,p.unit||'قطعة']);
     });
     var sup = [['المورد','التاريخ','النوع','الصنف','الكمية','سعر الوحدة','قيمة البضاعة','المدفوع','ملاحظة']];
-    var bal = [['المورد','رقم التليفون','إجمالي البضاعة','المرتجع','المدفوع','الرصيد (موجب = له عندي / سالب = ليا عنده)']];
+    var bal = [['المورد','رقم التليفون','العنوان','إجمالي البضاعة','المرتجع','المدفوع','الرصيد (موجب = له عندي / سالب = ليا عنده)']];
     var totalBal = 0;
     sups.forEach(function(s){
       (s.entries||[]).slice().reverse().forEach(function(e){
@@ -505,13 +515,13 @@
         else sup.push([s.name,dt(e.ts),'دفعة','','','','',e.amount,e.note||'']);
       });
       var st = supStats(s); totalBal += st.bal;
-      bal.push([s.name,s.phone||'',round(st.bought),round(st.ret),round(st.paid),round(st.bal)]);
+      bal.push([s.name,s.phone||'',s.addr||'',round(st.bought),round(st.ret),round(st.paid),round(st.bal)]);
     });
-    var cbal = [['العميل','التليفون','إجمالي الفواتير الآجل','دفعات ودين قديم','الرصيد (موجب = عليه)']], custTot = 0;
+    var cbal = [['العميل','التليفون','العنوان','إجمالي الفواتير الآجل','دفعات ودين قديم','الرصيد (موجب = عليه)']], custTot = 0;
     Array.from(customers.values()).sort(byName).forEach(function(c){
       var st = custStats(c), dbt = 0; (c.entries||[]).forEach(function(e){ if(e.type==='debt') dbt += e.amount; });
       custTot += Math.max(st.bal,0);
-      if((c.entries||[]).length) cbal.push([c.name,c.phone||'',round(st.bought),'دفع '+round(st.paid)+(dbt?' · دين قديم '+round(dbt):''),round(st.bal)]);
+      if((c.entries||[]).length) cbal.push([c.name,c.phone||'',c.addr||'',round(st.bought),'دفع '+round(st.paid)+(dbt?' · دين قديم '+round(dbt):''),round(st.bal)]);
     });
     var sm = [['البند','القيمة'],
       ['تاريخ النسخة',dt(Date.now())],

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -247,6 +247,10 @@ setTimeout(function(){
               <label for="s-phone">التليفون (اختياري)</label>
               <input id="s-phone" type="text" inputmode="tel" placeholder="01xxxxxxxxx">
             </div>
+            <div class="wide">
+              <label for="s-addr">العنوان (اختياري)</label>
+              <input id="s-addr" type="text" placeholder="مثلا: المنطقة الصناعية، العاشر من رمضان">
+            </div>
             <div class="actions">
               <button class="btn primary" type="submit">إضافة المورد</button>
             </div>
@@ -374,7 +378,7 @@ setTimeout(function(){
         </div>
 
         <div class="panel">
-          <div class="row-actions"><button class="btn" type="button" data-act="exp-sup">تصدير حساب المورد لـ Excel</button><button class="btn danger" id="sd-del" type="button" data-act="delsup">حذف المورد</button></div>
+          <div class="row-actions"><button class="btn" type="button" data-act="editsup">غيّر الاسم / التليفون / العنوان</button><button class="btn" type="button" data-act="exp-sup">تصدير حساب المورد لـ Excel</button><button class="btn danger" id="sd-del" type="button" data-act="delsup">حذف المورد</button></div>
         </div>
       </div>
     </section>
@@ -386,6 +390,7 @@ setTimeout(function(){
           <form id="cform" class="pform" autocomplete="off">
             <div class="wide"><label for="cu-name">اسم العميل</label><input id="cu-name" type="text" placeholder="مثلا: أحمد محمود"></div>
             <div><label for="cu-phone">التليفون (اختياري)</label><input id="cu-phone" type="text" inputmode="tel" placeholder="01xxxxxxxxx"></div>
+            <div class="wide"><label for="cu-addr">العنوان (اختياري)</label><input id="cu-addr" type="text" placeholder="مثلا: شارع التحرير، الدقي"></div>
             <div class="actions"><button class="btn primary" type="submit">إضافة العميل</button></div>
           </form>
         </div>
@@ -403,7 +408,7 @@ setTimeout(function(){
           <p class="hint" id="cud-phone"></p>
           <div id="cud-tiles" class="tiles"></div>
           <div class="row-actions">
-            <button class="btn" type="button" data-act="editcust">غيّر الاسم / التليفون</button>
+            <button class="btn" type="button" data-act="editcust">غيّر الاسم / التليفون / العنوان</button>
             <button class="btn danger" type="button" data-act="delcust">مسح العميل</button>
           </div>
           <p class="hint">مسح العميل مش بيمسح فواتيره، الفواتير القديمة بتفضل باسمه.</p>
@@ -666,12 +671,12 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=23" charset="utf-8"></script>
-<script src="app1.js?v=23" charset="utf-8"></script>
-<script src="app2.js?v=23" charset="utf-8"></script>
-<script src="app3.js?v=23" charset="utf-8"></script>
-<script src="cloud.js?v=23" charset="utf-8"></script>
-<script src="app4.js?v=23" charset="utf-8"></script>
-<script src="app5.js?v=23" charset="utf-8"></script>
+<script src="fb.js?v=24" charset="utf-8"></script>
+<script src="app1.js?v=24" charset="utf-8"></script>
+<script src="app2.js?v=24" charset="utf-8"></script>
+<script src="app3.js?v=24" charset="utf-8"></script>
+<script src="cloud.js?v=24" charset="utf-8"></script>
+<script src="app4.js?v=24" charset="utf-8"></script>
+<script src="app5.js?v=24" charset="utf-8"></script>
 </body>
 </html>

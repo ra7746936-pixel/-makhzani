@@ -149,7 +149,7 @@
 
     var st = supStats(s), b = balLabel(st.bal);
     $('#sd-name').textContent = s.name;
-    $('#sd-phone').textContent = s.phone ? 'تليفون: '+s.phone : '';
+    $('#sd-phone').textContent = [s.phone ? 'تليفون: '+s.phone : '', s.addr ? 'العنوان: '+s.addr : ''].filter(Boolean).join(' · ');
     $('#sd-pill').textContent = b[0];
     $('#sd-pill').className = 'pill '+b[1];
     $('#sd-del').textContent = pendingSup===s.id ? 'متأكد؟ اضغط تاني' : 'حذف المورد';
@@ -611,7 +611,7 @@
           if(e.edited) o.edited = true;
           return o;
         });
-        sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),entries:en,created:num(s.created,Date.now())});
+        sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),addr:String(s.addr||'').slice(0,160),entries:en,created:num(s.created,Date.now())});
       }
     });
     var cu = [];
@@ -621,7 +621,7 @@
           if(e.type==='sale') return {id:String(e.id),type:'sale',ts:num(e.ts,0),sid:String(e.sid||''),no:Math.floor(num(e.no,0)),total:num(e.total,0),paid:num(e.paid,0),by:String(e.by||'')};
           return {id:String(e.id),type:e.type,ts:num(e.ts,0),amount:num(e.amount,0),note:String(e.note||''),by:String(e.by||'')};
         });
-        cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),entries:en,created:num(c.created,Date.now())});
+        cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),addr:String(c.addr||'').slice(0,160),entries:en,created:num(c.created,Date.now())});
       }
     });
     return {products:ps,sales:ss,suppliers:sp,customers:cu,seq:Math.max(0,Math.floor(+d.seq||0))};
