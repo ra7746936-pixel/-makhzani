@@ -382,6 +382,11 @@
       '<div class="tile"><span>عدد الأصناف في المخزن</span><strong>'+fmt(products.size)+'</strong></div>'+
       '<div class="tile"><span>مستحق للموردين</span><strong>'+money(owed)+'</strong></div>'+
       '<div class="tile"><span>مستحق من العملاء (ديون)</span><strong>'+money(custOwed)+'</strong></div>';
+    var tv = []; products.forEach(function(p){ if(!p.svc) tv.push({p:p,v:p.qty*p.price}); });
+    tv.sort(function(a,b){ return b.v-a.v; });
+    $('#topval').innerHTML = tv.slice(0,10).map(function(x){
+      return '<tr><td>'+esc(x.p.name)+'</td><td class="n">'+esc(qtyText(x.p.qty,x.p.pack,x.p.unit))+'</td><td class="n">'+money(x.p.price)+(x.p.unit ? ' / '+esc(x.p.unit) : '')+'</td><td class="n">'+money(round(x.v))+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="note">مفيش أصناف لسه.</td></tr>';
     $('#rtable').innerHTML = r.rows.length ? r.rows.map(function(x){
       return '<tr><td>'+esc(x.name)+'</td><td class="n">'+fmt(x.sold)+'</td><td class="n">'+(x.left===null?'—':fmt(x.left))+'</td><td class="n">'+money(x.rev)+'</td></tr>';
     }).join('') : '<tr><td colspan="4" class="note">مفيش أصناف لسه.</td></tr>';
