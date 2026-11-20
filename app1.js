@@ -339,9 +339,9 @@
   }
 
   function periodRows(){
-    var t0 = new Date(); t0.setHours(0,0,0,0); t0 = t0.getTime();
+    var t0 = new Date(); t0.setHours(0,0,0,0); if(period==='month') t0.setDate(1); t0 = t0.getTime();
     var rows = new Map(), invoices = 0;
-    if(period==='today'){
+    if(period==='today' || period==='month'){
       sales.filter(function(s){ return s.ts>=t0; }).forEach(function(s){
         invoices++;
         s.lines.forEach(function(l){
@@ -379,16 +379,22 @@
     var owed = 0, custOwed = 0;
     suppliers.forEach(function(s){ var b = supStats(s).bal; if(b>0) owed += b; });
     customers.forEach(function(c){ var b = custStats(c).bal; if(b>0) custOwed += b; });
-    var exT = (typeof exSum==='function' && isOwner()) ? exSum(exIn(period==='today' ? 'today' : 'all')) : 0;
+    var exT = (typeof exSum==='function' && isOwner()) ? exSum(exIn(period)) : 0;
+    var PL = period==='today' ? 'النهارده' : period==='month' ? 'الشهر ده' : 'من الأول';
+    var partial = (period==='all' && mode==='cloud');
+    /* العميل اللي هو نفسه مورد: اللي بينهم بيتخصم من بعض في إجمالي الديون */
+    var offs = 0;
+    customers.forEach(function(c){ var s2 = c.supId ? suppliers.get(c.supId) : null; if(!s2) return; offs += Math.min(Math.max(custStats(c).bal,0),Math.max(supStats(s2).bal,0)); });
+    offs = round(offs); owed = round(Math.max(owed-offs,0)); custOwed = round(Math.max(custOwed-offs,0));
     $('#tiles').innerHTML =
-      '<div class="tile"><span>مبيعات '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(rev)+'</strong>'+(period==='today'?'<small>'+fmt(r.invoices)+' فاتورة</small>':'')+'</div>'+
-      '<div class="tile"><span>صافي الربح '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(pr.profit)+'</strong><small>'+(pr.unknown ? 'من غير '+fmt(pr.unknown)+' سطر مفيهوش سعر جملة' : 'الإيراد − سعر الجملة')+'</small></div>'+
-      (exT>0 ? '<div class="tile"><span>مصروفات '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(exT)+'</strong><small>رواتب وإيجار وبنزين…</small></div><div class="tile"><span>الربح بعد المصروفات</span><strong>'+money(round(pr.profit-exT))+'</strong><small>صافي الربح − المصروفات</small></div>' : '')+
+      '<div class="tile"><span>مبيعات '+PL+'</span><strong>'+money(rev)+'</strong>'+(period!=='all'?'<small>'+fmt(r.invoices)+' فاتورة</small>':'')+'</div>'+
+      '<div class="tile"><span>ربح البضاعة '+PL+'</span><strong>'+money(pr.profit)+'</strong><small>'+(pr.unknown ? 'من غير '+fmt(pr.unknown)+' سطر مفيهوش سعر جملة' : 'سعر البيع − سعر الجملة (قبل المصروفات)')+(partial ? ' · محسوب من فواتير آخر '+CLOUD_DAYS+' يوم بس' : '')+'</small></div>'+
+      (exT>0 ? '<div class="tile"><span>مصروفات '+PL+'</span><strong>'+money(exT)+'</strong><small>رواتب وإيجار وبنزين…</small></div><div class="tile"><span>الصافي بعد المصروفات</span><strong>'+money(round(pr.profit-exT))+'</strong><small>ربح البضاعة − المصروفات'+(period==='today' ? ' · الإيجار والمرتبات شهرية، شوف «الشهر ده»' : '')+'</small></div>' : '')+
       '<div class="tile"><span>قطع اتباعت</span><strong>'+fmt(pcs)+'</strong></div>'+
       '<div class="tile"><span>قيمة اللي فاضل في المخزن</span><strong>'+money(stockVal)+'</strong></div>'+
       '<div class="tile"><span>عدد الأصناف في المخزن</span><strong>'+fmt(products.size)+'</strong></div>'+
-      '<div class="tile"><span>مستحق للموردين</span><strong>'+money(owed)+'</strong></div>'+
-      '<div class="tile"><span>مستحق من العملاء (ديون)</span><strong>'+money(custOwed)+'</strong></div>';
+      '<div class="tile"><span>إحنا مديونين للموردين</span><strong>'+money(owed)+'</strong>'+(offs>0?'<small>بعد خصم '+money(offs)+' متبادل مع ناس عملاء ومورّدين</small>':'')+'</div>'+
+      '<div class="tile"><span>العملاء مديونين لينا</span><strong>'+money(custOwed)+'</strong>'+(offs>0?'<small>بعد خصم '+money(offs)+' متبادل مع ناس عملاء ومورّدين</small>':'')+'</div>';
     var tv = []; products.forEach(function(p){ if(!p.svc) tv.push({p:p,v:p.qty*p.price}); });
     tv.sort(function(a,b){ return b.v-a.v; });
     $('#topval').innerHTML = tv.slice(0,10).map(function(x){

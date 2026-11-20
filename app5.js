@@ -494,12 +494,30 @@ $('#inv-q').addEventListener('input',function(e){ invQ = e.target.value; invLimi
 /* ---------- العملاء ---------- */
 var selCust = null, custQ = '';
 function custInvoices(id){ return sales.filter(function(s){ return s.cust && s.cust.id===id; }).sort(function(a,b){ return b.ts-a.ts; }); }
+/* اختيار العميل في البيع: بحث بالاسم أو التليفون أو العنوان. العميل المختار بيفضل في القايمة حتى لو مش في نتايج البحث */
+function custMatches(q){
+  q = (q||'').trim().toLowerCase();
+  var all = Array.from(customers.values()).sort(byName);
+  return q ? all.filter(function(c){ return c.name.toLowerCase().indexOf(q)>=0 || (c.phone||'').indexOf(q)>=0 || (c.addr||'').toLowerCase().indexOf(q)>=0; }) : all;
+}
 function renderCustSel(){
   var el = $('#cust'); if(!el) return;
   var pr = $('#paid-row'); if(pr) pr.hidden = !el.value;
-  var opts = '<option value="">بدون عميل</option>'+Array.from(customers.values()).sort(byName).map(function(c){ return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>'; }).join('');
-  if(opts!==el.__o){ var cur = el.value; el.innerHTML = opts; el.__o = opts; if(cur && customers.get(cur)) el.value = cur; }
+  var qq = ($('#cust-q')||{}).value || '', m = custMatches(qq), cur = el.value, more = 0;
+  if(m.length>150){ more = m.length-150; m = m.slice(0,150); }
+  if(cur && customers.get(cur) && !m.some(function(c){ return c.id===cur; })) m.unshift(customers.get(cur));
+  var opts = '<option value="">'+(qq.trim() ? (m.length ? 'اختار من النتايج ('+fmt(m.length)+')…' : 'مفيش عميل بالاسم ده') : 'بدون عميل')+'</option>'+
+    m.map(function(c){ return '<option value="'+esc(c.id)+'">'+esc(c.name)+(c.phone ? ' — '+esc(c.phone) : '')+'</option>'; }).join('')+
+    (more ? '<option value="" disabled>… و'+fmt(more)+' كمان. اكتب أكتر في البحث</option>' : '');
+  if(opts!==el.__o){ el.innerHTML = opts; el.__o = opts; if(cur && customers.get(cur)) el.value = cur; }
 }
+$('#cust-q').addEventListener('input',renderCustSel);
+$('#cust-q').addEventListener('keydown',function(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  var m = custMatches(this.value);
+  if(m.length>=1){ renderCustSel(); $('#cust').value = m[0].id; $('#cust').dispatchEvent(new Event('change')); this.value = ''; renderCustSel(); toast('العميل: '+m[0].name); }
+});
 function renderCust(){
   renderCustSel();
   if($('#v-cust').hidden) return;
@@ -545,7 +563,7 @@ $('#cdb-form').addEventListener('submit',function(e){
   addCEntry(c,{type:'debt',amount:round(a),note:$('#cd-note').value.trim()});
   logA('cust','دين قديم على '+c.name+': '+money(a)); $('#cdb-form').reset(); toast('اتسجل الدين'); render();
 });
-$('#cust').addEventListener('change',function(){ $('#paid-row').hidden = !$('#cust').value; if(!$('#cust').value) $('#paid').value = ''; });
+$('#cust').addEventListener('change',function(){ $('#paid-row').hidden = !$('#cust').value; if(!$('#cust').value) $('#paid').value = ''; if($('#cust').value && $('#cust-q').value){ $('#cust-q').value = ''; renderCustSel(); } });
 function addCustomer(name,phone,addr){
   var c = {id:uid(),name:name,phone:phone||'',created:Date.now()};
   if(addr) c.addr = String(addr).slice(0,160);
@@ -580,7 +598,7 @@ document.addEventListener('click',function(e){
     var n = window.prompt('اسم العميل:'); n = n ? n.trim() : ''; if(!n) return;
     var ph = window.prompt('التليفون (اختياري):') || '';
     var ad = isOwner() ? (window.prompt('العنوان (اختياري):') || '') : '';
-    var c = addCustomer(n,ph.trim(),ad.trim()); renderCustSel(); $('#cust').value = c.id; toast('اتضاف العميل: '+n);
+    var c = addCustomer(n,ph.trim(),ad.trim()); renderCustSel(); $('#cust').value = c.id; $('#paid-row').hidden = false; toast('اتضاف العميل: '+n);
   }
   else if(act==='editcust'){
     var cc = selCust ? customers.get(selCust) : null; if(!cc || !isOwner()) return;

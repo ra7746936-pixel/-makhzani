@@ -270,7 +270,7 @@ html.authing #app{display:none}
 .fee-row input{width:110px;text-align:center}
 .receipt .rc-fee{display:flex;justify-content:space-between;font-size:13px;margin-top:4px}
 
-.cust-row select{flex:1;min-width:0;max-width:180px}
+.cust-row select,.cust-row input[type=search]{flex:1;min-width:0;max-width:240px}
 .cust-row .btn{white-space:nowrap}
 #inv-q,#cu-q{width:100%;margin-bottom:10px}
 .recent .cust-tag{display:inline-block;margin-inline-start:6px;font-size:12px;opacity:.8}
@@ -292,3 +292,4 @@ html.authing #app{display:none}
 .lk-net.ok{color:var(--ok-ink,inherit)}
 .seg4{grid-template-columns:repeat(4,auto);max-width:100%;overflow-x:auto}
 .seg4 button{padding:8px 12px;white-space:nowrap}
+.lk-q{width:100%;margin-bottom:6px}

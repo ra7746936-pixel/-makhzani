@@ -79,21 +79,31 @@ document.addEventListener('click',function(e){
 });
 
 /* ---------- ربط العميل بالمورد (نفس الشخص) + مقاصة الحسابات ---------- */
-var lkCache = {c:'',s:''}, lkPend = null, lkTimer = null;
+var lkCache = {c:'',s:''}, lkPend = null, lkTimer = null, lkQ = {cust:'',sup:''};
+/* خيارات قايمة الربط مع بحث بالاسم أو التليفون أو العنوان. المربوط حاليا بيفضل ظاهر */
+function lkOptions(side,selId){
+  var other = side==='cust' ? suppliers : customers, q = (lkQ[side]||'').trim().toLowerCase();
+  var all = Array.from(other.values()).sort(function(a,b){ return a.name.localeCompare(b.name,'ar'); });
+  var m = q ? all.filter(function(x){ return x.name.toLowerCase().indexOf(q)>=0 || (x.phone||'').indexOf(q)>=0 || (x.addr||'').toLowerCase().indexOf(q)>=0; }) : all, more = 0;
+  if(m.length>150){ more = m.length-150; m = m.slice(0,150); }
+  if(selId && other.get(selId) && !m.some(function(x){ return x.id===selId; })) m.unshift(other.get(selId));
+  return '<option value="">'+(q ? (m.length ? 'اختار من النتايج ('+fmt(m.length)+')…' : 'مفيش نتايج') : '— لأ، مش نفس الشخص —')+'</option>'+
+    m.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===selId ? ' selected' : '')+'>'+esc(x.name)+(x.phone ? ' — '+esc(x.phone) : '')+'</option>'; }).join('')+
+    (more ? '<option value="" disabled>… و'+fmt(more)+' كمان. اكتب أكتر في البحث</option>' : '');
+}
 function lkOne(side,me){
   var other = side==='cust' ? suppliers : customers, key = side==='cust' ? me.supId : me.custId, o = key ? other.get(key) : null;
-  var opts = Array.from(other.values()).sort(function(a,b){ return a.name.localeCompare(b.name,'ar'); }).map(function(x){
-    return '<option value="'+esc(x.id)+'"'+(o && o.id===x.id ? ' selected' : '')+'>'+esc(x.name)+'</option>';
-  }).join('');
+  var opts = lkOptions(side,o ? o.id : '');
   var h = '<h2>'+(side==='cust' ? 'ده نفسه مورد؟' : 'ده نفسه عميل؟')+'</h2>'+
     '<p class="hint">لو الشخص ده بتبيعله وبتشتري منه، اربط الحسابين وتقدر تقفلهم على بعض. مثلا اشتريت منه بـ 20 وهو اشترى منك بـ 20 ومدفعش: الاتنين يبقوا خالصين.</p>'+
     '<div class="pform"><div class="wide"><label>'+(side==='cust' ? 'هو مين في الموردين؟' : 'هو مين في العملاء؟')+'</label>'+
-    '<select class="lk-sel" data-side="'+side+'" data-id="'+esc(me.id)+'"><option value="">— لأ، مش نفس الشخص —</option>'+opts+'</select></div></div>';
+    '<input type="search" class="lk-q" data-side="'+side+'" autocomplete="off" placeholder="ابحث بالاسم أو التليفون…" value="'+esc(lkQ[side]||'')+'">'+
+    '<select class="lk-sel" data-side="'+side+'" data-id="'+esc(me.id)+'">'+opts+'</select></div></div>';
   if(o){
     var c = side==='cust' ? me : o, s = side==='cust' ? o : me, cb = custStats(c).bal, sb = supStats(s).bal, net = round(cb-sb), m = round(Math.min(Math.max(cb,0),Math.max(sb,0)));
-    h += '<ul class="lk-info"><li>حساب العميل «'+esc(c.name)+'»: '+(cb>0 ? 'عليه لينا '+money(cb) : cb<0 ? 'له علينا '+money(-cb) : 'متسوّي')+'</li>'+
-      '<li>حساب المورد «'+esc(s.name)+'»: '+(sb>0 ? 'احنا عليه '+money(sb) : sb<0 ? 'ليا عنده '+money(-sb) : 'متسوّي')+'</li></ul>'+
-      '<div class="lk-net">الصافي بينكم: '+(net>0 ? 'هو عليه لينا '+money(net) : net<0 ? 'احنا عليه '+money(-net) : 'متسوّيين')+'</div>';
+    h += '<ul class="lk-info"><li>كعميل «'+esc(c.name)+'»: '+(cb>0 ? 'هو مديون لينا '+money(cb) : cb<0 ? 'إحنا مديونين له '+money(-cb)+' (رصيد دائن)' : 'حسابه صفر')+'</li>'+
+      '<li>كمورد «'+esc(s.name)+'»: '+(sb>0 ? 'إحنا مديونين له '+money(sb) : sb<0 ? 'هو مديون لينا '+money(-sb)+' (دفعنا له زيادة)' : 'حسابه صفر')+'</li></ul>'+
+      '<div class="lk-net">النتيجة بعد ما نخصم الاتنين من بعض: '+(net>0 ? 'هو يدفعلنا '+money(net) : net<0 ? 'إحنا ندفعله '+money(-net) : 'محدش مديون لحد')+'</div>';
     if(m>0) h += '<button class="btn primary" type="button" data-lk="settle" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'">'+(lkPend===c.id+'|'+s.id ? 'متأكد؟ اضغط تاني' : 'قفل الحسابات مع بعض (مقاصة '+money(m)+')')+'</button>'+
       '<p class="hint">هيتسجّل '+money(m)+' كدفعة في حساب العميل وكدفعة في حساب المورد، والصافي بس هو اللي يفضل.</p>';
   }
@@ -101,6 +111,11 @@ function lkOne(side,me){
 }
 function renderLinks(){
   if(!isOwner()) return;
+  var ae = document.activeElement, keep = (ae && ae.classList && ae.classList.contains('lk-q')) ? {side:ae.dataset.side,pos:ae.selectionStart} : null;
+  renderLinks2();
+  if(keep){ var ni = document.querySelector('.lk-q[data-side="'+keep.side+'"]'); if(ni && ni!==ae){ ni.focus(); try{ ni.setSelectionRange(keep.pos,keep.pos); }catch(e){} } }
+}
+function renderLinks2(){
   var c = (typeof selCust!=='undefined' && selCust) ? customers.get(selCust) : null, cp = $('#cud-link');
   if(cp){ if(!c || $('#cust-detail').hidden){ cp.hidden = true; } else { var h1 = lkOne('cust',c); cp.hidden = false; if(h1!==lkCache.c){ cp.innerHTML = h1; lkCache.c = h1; } } }
   var s = (typeof selSup!=='undefined' && selSup) ? suppliers.get(selSup) : null, sp = $('#sd-link');
@@ -153,4 +168,22 @@ window.addEventListener('load',function(){
   var rs = renderSup, rc = renderCust;
   renderSup = function(){ rs.apply(this,arguments); try{ renderLinks(); }catch(e){} };
   renderCust = function(){ rc.apply(this,arguments); try{ renderLinks(); }catch(e){} };
+});
+
+/* كتابة في خانة البحث: بنحدّث القايمة بس (من غير ما نعيد رسم اللوحة عشان الكتابة متتقطعش) */
+document.addEventListener('input',function(e){
+  var q = e.target.closest ? e.target.closest('.lk-q') : null; if(!q) return;
+  var side = q.dataset.side; lkQ[side] = q.value;
+  var sel = q.parentNode.querySelector('.lk-sel'); if(!sel) return;
+  var me = side==='cust' ? customers.get(sel.dataset.id) : suppliers.get(sel.dataset.id); if(!me) return;
+  var key = side==='cust' ? me.supId : me.custId;
+  sel.innerHTML = lkOptions(side,key); lkCache[side==='cust' ? 'c' : 's'] = '';
+});
+document.addEventListener('keydown',function(e){
+  var q = e.target.closest ? e.target.closest('.lk-q') : null; if(!q || e.key!=='Enter') return;
+  e.preventDefault();
+  var side = q.dataset.side, sel = q.parentNode.querySelector('.lk-sel'); if(!sel) return;
+  var first = Array.prototype.filter.call(sel.options,function(o){ return o.value && !o.disabled; })[0];
+  if(!first || !isOwner() || !ready()) return;
+  lkQ[side] = ''; sel.value = first.value; sel.dispatchEvent(new Event('change',{bubbles:true}));
 });

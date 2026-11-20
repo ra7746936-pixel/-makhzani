@@ -455,7 +455,7 @@
       if(paidN<sale.total) sale.paid = round(paidN);
     }
     $('#paid').value = '';
-    $('#cust').value = '';
+    $('#cust').value = ''; if($('#cust-q')) $('#cust-q').value = ''; if(typeof renderCustSel==='function') renderCustSel();
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
     cart = {};
