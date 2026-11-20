@@ -1,4 +1,4 @@
-window.APP_VER = 'v27';
+window.APP_VER = 'v28';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -38,6 +38,22 @@ function cloudErrMsg(e){
   if(c==='auth/operation-not-allowed') return 'تسجيل الدخول بالإيميل مش متفعّل في Firebase.';
   return 'حصلت مشكلة'+(c ? ' ('+c+')' : '')+'. جرّب تاني.';
 }
+/* كل محل مفصول: أي حاجة محفوظة على الجهاز (بيانات فاتورة، PIN، كاشيرين، سجل أمان) بتتمسح لو آخر محل دخل الجهاز ده مش نفس المحل.
+   من غير كده محل تاني على نفس الجهاز كان ممكن يشوف اسم المحل القديم على الفاتورة، أو كاشيرين المحل القديم يتنقلوا لمحله. بيرجّع true لو عمل إعادة تحميل. */
+var SHOP_MARK = 'makhzani-shop', SHOP_KEYS = ['makhzani-print','makhzani-sec','makhzani-audit','makhzani-fail','makhzani-lastuser','makhzani-lastbackup','makhzani-sec-migrated','makhzani-aud-migrated','makhzani-migrated'];
+function cloudIsolate(shopId){
+  var mark = null; try{ mark = localStorage.getItem(SHOP_MARK); }catch(e){ return false; }
+  if(mark===shopId) return false;
+  var tries = 0; try{ tries = +sessionStorage.getItem('makhzani-iso') || 0; sessionStorage.setItem('makhzani-iso',String(tries+1)); }catch(e){}
+  if(tries>=2) return false;
+  try{
+    SHOP_KEYS.forEach(function(k){ localStorage.removeItem(k); });
+    localStorage.setItem(SHOP_MARK,shopId);
+    if(localStorage.getItem(SHOP_MARK)!==shopId) return false;
+  }catch(e){ return false; }
+  location.reload();
+  return true;
+}
 function cloudDecide(c,fromCache){
   var now = Date.now(), seen = 0;
   try{ seen = +localStorage.getItem(SEEN_KEY) || 0; }catch(e){}
@@ -46,6 +62,7 @@ function cloudDecide(c,fromCache){
   if(!c.exp || now > c.exp){ cloudShow('blocked','انتهى الاشتراك','الاشتراك انتهى يوم '+(c.exp ? cloudDate(c.exp) : '—')+'. بعد ما تجدد اضغط تحقق تاني. للتجديد كلّم'+(cloudSup()||' الدعم')+'.'); return; }
   if(fromCache && now - c.checked > CLOUD_STALE_MS){ cloudShow('offline','لازم تتصل بالنت','الجهاز مش اتصل بالإنترنت بقاله أكتر من 7 أيام. وصّله بالنت وبعدين اضغط تحقق تاني.'); return; }
   try{ if(now>seen) localStorage.setItem(SEEN_KEY,String(now)); }catch(e){}
+  if(!cloudStarted && cloudIsolate(c.shopId)) return;
   if(cloudDataStart(c.shopId)===false) return;
   if(locked){ $('#cloud').hidden = true; hideLock(); }
   updateNote(Math.ceil((c.exp-now)/86400000));
@@ -153,7 +170,7 @@ function cloudDataStart(shopId){
     sec = {v:1,owner:null,users:[],cfg:{pinInv:true,pinStock:true,autoLock:0,phone:''},used:[]};
     db.watch('meta/print',function(s){
       var pc = s.exists() ? s.data() : null;
-      if(pc){ shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''}; }
+      shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''} : {name:'',foot:'',w:'80',qr:'',qrt:''};
     },function(){});
   } else {
   /* المصروفات: للمالك بس */
@@ -416,7 +433,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=27').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=28').catch(function(){}); });
   }
 }catch(e){}
 

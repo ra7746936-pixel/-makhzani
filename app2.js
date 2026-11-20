@@ -329,7 +329,7 @@
     }).join('');
     var cnt = s.lines.length;
     var kv = function(k,v,cls){ return '<div class="rc-kv'+(cls?' '+cls:'')+'"><span>'+k+'</span><strong>'+v+'</strong></div>'; };
-    return '<div class="rc-sec rc-head"><div class="rc-shop">'+esc(shopCfg.name||'مخزني')+'</div></div>'+
+    return '<div class="rc-sec rc-head"><div class="rc-shop">'+esc(shopCfg.name||(typeof cloudInfo!=='undefined' && cloudInfo && cloudInfo.name)||'مخزني')+'</div></div>'+
       '<div class="rc-sec rc-info">'+
         kv('رقم الفاتورة',esc(invCode(s)))+
         kv('التاريخ',dt(s.ts))+
