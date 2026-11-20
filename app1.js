@@ -185,8 +185,8 @@
     return {bought:round(bought),paid:round(paid),bal:round(owed-paid)};
   }
   function custBal(bal){
-    if(bal>0) return ['عليه '+money(bal),'warn'];
-    if(bal<0) return ['له '+money(-bal),'ok'];
+    if(bal>0) return ['هيدفعلنا '+money(bal),'warn'];
+    if(bal<0) return ['إحنا هندفعله '+money(-bal),'ok'];
     return ['متسوّي','zero'];
   }
   function removeCustomer(id){

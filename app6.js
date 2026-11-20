@@ -101,9 +101,9 @@ function lkOne(side,me){
     '<select class="lk-sel" data-side="'+side+'" data-id="'+esc(me.id)+'">'+opts+'</select></div></div>';
   if(o){
     var c = side==='cust' ? me : o, s = side==='cust' ? o : me, cb = custStats(c).bal, sb = supStats(s).bal, net = round(cb-sb), m = round(Math.min(Math.max(cb,0),Math.max(sb,0)));
-    h += '<ul class="lk-info"><li>كعميل «'+esc(c.name)+'»: '+(cb>0 ? 'هو مديون لينا '+money(cb) : cb<0 ? 'إحنا مديونين له '+money(-cb)+' (رصيد دائن)' : 'حسابه صفر')+'</li>'+
-      '<li>كمورد «'+esc(s.name)+'»: '+(sb>0 ? 'إحنا مديونين له '+money(sb) : sb<0 ? 'هو مديون لينا '+money(-sb)+' (دفعنا له زيادة)' : 'حسابه صفر')+'</li></ul>'+
-      '<div class="lk-net">النتيجة بعد ما نخصم الاتنين من بعض: '+(net>0 ? 'هو يدفعلنا '+money(net) : net<0 ? 'إحنا ندفعله '+money(-net) : 'محدش مديون لحد')+'</div>';
+    h += '<ul class="lk-info"><li>كعميل «'+esc(c.name)+'»: '+(cb>0 ? 'هيدفعلنا '+money(cb) : cb<0 ? 'إحنا هندفعله '+money(-cb) : 'حسابه صفر')+'</li>'+
+      '<li>كمورد «'+esc(s.name)+'»: '+(sb>0 ? 'إحنا هندفعله '+money(sb) : sb<0 ? 'هيدفعلنا '+money(-sb)+' (دفعنا له زيادة)' : 'حسابه صفر')+'</li></ul>'+
+      '<div class="lk-net">النتيجة بعد ما نخصم الاتنين من بعض: '+(net>0 ? 'هيدفعلنا '+money(net) : net<0 ? 'إحنا هندفعله '+money(-net) : 'محدش مديون لحد')+'</div>';
     if(m>0) h += '<button class="btn primary" type="button" data-lk="settle" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'">'+(lkPend===c.id+'|'+s.id ? 'متأكد؟ اضغط تاني' : 'قفل الحسابات مع بعض (مقاصة '+money(m)+')')+'</button>'+
       '<p class="hint">هيتسجّل '+money(m)+' كدفعة في حساب العميل وكدفعة في حساب المورد، والصافي بس هو اللي يفضل.</p>';
   }

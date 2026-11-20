@@ -123,8 +123,8 @@
     return {bought:round(bought),paid:round(paid),ret:round(ret),bal:round(bought-paid-ret)};
   }
   function balLabel(bal){
-    if(bal>0) return ['له عندي '+money(bal),'warn'];
-    if(bal<0) return ['ليا عنده '+money(-bal),'ok'];
+    if(bal>0) return ['إحنا هندفعله '+money(bal),'warn'];
+    if(bal<0) return ['هيدفعلنا '+money(-bal),'ok'];
     return ['متسوّي','zero'];
   }
   /* الشخص اللي عميل ومورد: الصافي بعد ما حسابه كعميل وحسابه كمورد يتخصموا من بعض (من غير ما نلمس سجل أي حساب). null لو مش مربوط */
@@ -164,8 +164,8 @@
       '<div class="tile"><span>إجمالي البضاعة منه</span><strong>'+money(st.bought)+'</strong></div>'+
       '<div class="tile"><span>اللي دفعته</span><strong>'+money(st.paid)+'</strong></div>'+
       (st.ret>0?'<div class="tile"><span>مرتجعات رجّعتها له</span><strong>'+money(st.ret)+'</strong></div>':'')+
-      '<div class="tile"><span>'+(st.bal<0?'ليا عنده':'الباقي له عندي')+(lnS!==null?' (كمورد بس)':'')+'</span><strong>'+money(Math.abs(st.bal))+'</strong></div>'+
-      (lnS!==null?'<div class="tile"><span>'+(lnS<0?'صافي: ليا عنده':lnS>0?'صافي: له عندي':'الصافي')+'</span><strong>'+(lnS===0?'متسوّي':money(Math.abs(lnS)))+'</strong><small>بعد خصم حسابه كعميل</small></div>':'');
+      '<div class="tile"><span>'+(st.bal<0?'هيدفعلنا':'إحنا هندفعله')+(lnS!==null?' (كمورد بس)':'')+'</span><strong>'+money(Math.abs(st.bal))+'</strong></div>'+
+      (lnS!==null?'<div class="tile"><span>'+(lnS<0?'الصافي: هيدفعلنا':lnS>0?'الصافي: إحنا هندفعله':'الصافي')+'</span><strong>'+(lnS===0?'متسوّي':money(Math.abs(lnS)))+'</strong><small>بعد خصم حسابه كعميل</small></div>':'');
 
     var opts = '<option value="">اختار الصنف…</option>'+
       Array.from(products.values()).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'; }).join('')+
@@ -437,7 +437,7 @@
     var st = supStats(s);
     rows.push([]);
     rows.push(['الإجمالي','','','','',round(st.bought-st.ret),st.paid,'']);
-    rows.push(['الرصيد (موجب = له عندي / سالب = ليا عنده)','','','','',st.bal,'','']);
+    rows.push(['الرصيد (موجب = إحنا هندفعله / سالب = هيدفعلنا)','','','','',st.bal,'','']);
     downloadCsv('supplier-'+s.name.replace(/[^\w\u0600-\u06FF]+/g,'_'),rows);
   }
 

@@ -258,10 +258,10 @@ $('#imp-go').addEventListener('click',function(){
 var PARTY = {
   cust:{plural:'العملاء',one:'عميل',map:function(){ return customers; },put:function(){ return putCustomer; },
     hint:'ارفع ملف فيه أسماء العملاء (وتليفوناتهم وأرصدتهم لو موجودة). كل صف فيه مبلغ بيتسجل على حساب العميل، ولو العميل اتكرر في كذا صف (فاتورة لكل صف) البرنامج يجمعهم على نفس العميل. بعد كده اضغط على العميل من القايمة تلاقي حسابه وفواتيره.',
-    a:'عليه (العميل مدين للمحل)',b:'له (المحل مدين للعميل)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد له (استيراد)',log:'cust'},
+    a:'هيدفعلنا (العميل مدين للمحل)',b:'إحنا هندفعله (المحل مدين للعميل)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد له (استيراد)',log:'cust'},
   sup:{plural:'الموردين',one:'مورد',map:function(){ return suppliers; },put:function(){ return putSupplier; },
     hint:'ارفع ملف فيه أسماء الموردين (وتليفوناتهم وأرصدتهم لو موجودة). كل صف فيه مبلغ بيتسجل على حساب المورد، ولو المورد اتكرر في كذا صف البرنامج يجمعهم على نفس المورد.',
-    a:'له عندي (أنا مدين للمورد)',b:'ليا عنده (المورد مدين لي)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد ليا (استيراد)',log:'sup'}
+    a:'إحنا هندفعله (أنا مدين للمورد)',b:'هيدفعلنا (المورد مدين لي)',noteA:'رصيد سابق (استيراد)',noteB:'رصيد ليا (استيراد)',log:'sup'}
 };
 var PF = [
   {k:'phone',kw:['تليفون','موبايل','هاتف','محمول','جوال','phone','mobile','tel']},
@@ -542,7 +542,7 @@ function renderCust(){
     $('#cud-ledger').innerHTML = en.length ? en.map(function(e){
       var btn = isOwner() ? '<div class="lg-btns"><button type="button" class="btn danger sm" data-act="delcent" data-eid="'+esc(e.id)+'">'+(pendingCEnt===e.id?'متأكد؟ اضغط تاني':'مسح')+'</button></div>' : '';
       var h;
-      if(e.type==='sale') h = '<strong>فاتورة آجل '+(e.no?'#'+e.no:'')+' — '+money(e.total)+'</strong><span class="pmeta">دفع '+money(e.paid||0)+' · عليه '+money(round(e.total-(e.paid||0)))+'</span>';
+      if(e.type==='sale') h = '<strong>فاتورة آجل '+(e.no?'#'+e.no:'')+' — '+money(e.total)+'</strong><span class="pmeta">دفع '+money(e.paid||0)+' · باقي عليه '+money(round(e.total-(e.paid||0)))+'</span>';
       else if(e.type==='debt') h = '<strong>دين قديم '+money(e.amount)+'</strong>'+(e.note?'<span class="pmeta">'+esc(e.note)+'</span>':'');
       else h = '<strong>دفعة '+money(e.amount)+'</strong>'+(e.note?'<span class="pmeta">'+esc(e.note)+'</span>':'');
       return '<li class="ledger-row"><div class="lg-main">'+h+'<span class="when">'+dt(e.ts)+'</span></div>'+btn+'</li>';

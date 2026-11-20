@@ -507,7 +507,7 @@
       itm.push([p.name,p.price,p.svc ? '' : p.qty,st,pk||'',pk ? (Math.floor(p.qty/pk)+' كرتونة'+(round(p.qty%pk)>0 ? ' و '+round(p.qty%pk)+' قطعة' : '')) : '',hasC ? p.cost : '',hasC && !p.svc ? round(p.qty*p.cost) : '',p.barcode||'',p.sold||0,p.revenue||0,p.unit||'قطعة']);
     });
     var sup = [['المورد','التاريخ','النوع','الصنف','الكمية','سعر الوحدة','قيمة البضاعة','المدفوع','ملاحظة']];
-    var bal = [['المورد','رقم التليفون','العنوان','إجمالي البضاعة','المرتجع','المدفوع','الرصيد (موجب = له عندي / سالب = ليا عنده)']];
+    var bal = [['المورد','رقم التليفون','العنوان','إجمالي البضاعة','المرتجع','المدفوع','الرصيد (موجب = إحنا هندفعله / سالب = هيدفعلنا)']];
     var totalBal = 0;
     sups.forEach(function(s){
       (s.entries||[]).slice().reverse().forEach(function(e){
