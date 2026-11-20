@@ -1,4 +1,4 @@
-window.APP_VER = 'v24';
+window.APP_VER = 'v25';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -119,7 +119,7 @@ function cloudDataStart(shopId){
   var cashier = !!(cloudInfo && cloudInfo.role==='cashier');
   db = FB.shopDb(shopId);
   mode = 'pending';
-  products = new Map(); sales = []; suppliers = new Map(); customers = new Map();
+  products = new Map(); sales = []; suppliers = new Map(); customers = new Map(); expenses = new Map();
   var fail = function(err){ toast('مشكلة في المزامنة: '+((err && (err.code || err.message)) || ''),true); };
   var got = function(k){
     cloudGot[k] = true;
@@ -156,6 +156,12 @@ function cloudDataStart(shopId){
       if(pc){ shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80'}; }
     },function(){});
   } else {
+  /* المصروفات: للمالك بس */
+  db.collection('expenses').orderBy('ts','desc').limit(1500).onSnapshot(function(snap){
+    var m = new Map();
+    snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
+    expenses = m; render();
+  },function(){});
   db.collection('suppliers').onSnapshot(function(snap){
     var m = new Map();
     snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
@@ -297,7 +303,7 @@ function cloudAuditMigrate(shopId){
 }
 /* استرجاع نسخة احتياطية في السحابة: بيمسح اللي مش في الملف ويكتب اللي فيه */
 function cloudRestoreWrite(d,old){
-  var keep = {p:{},s:{},u:{},c:{}};
+  var keep = {p:{},s:{},u:{},c:{},e:{}};
   d.products.forEach(function(p){ keep.p[p.id] = 1; db.doc('products/'+p.id).set(p); });
   d.sales.forEach(function(s){ keep.s[s.id] = 1; db.doc('sales/'+s.id).set(s); });
   d.suppliers.forEach(function(s){ keep.u[s.id] = 1; db.doc('suppliers/'+s.id).set(s); });
@@ -306,6 +312,8 @@ function cloudRestoreWrite(d,old){
   old.u.forEach(function(id){ if(!keep.u[id]) db.doc('suppliers/'+id).delete(); });
   (d.customers||[]).forEach(function(c){ keep.c[c.id] = 1; db.doc('customers/'+c.id).set(c); });
   (old.c||[]).forEach(function(id){ if(!keep.c[id]) db.doc('customers/'+id).delete(); });
+  (d.expenses||[]).forEach(function(x){ keep.e[x.id] = 1; db.doc('expenses/'+x.id).set(x); });
+  (old.e||[]).forEach(function(id){ if(!keep.e[id]) db.doc('expenses/'+id).delete(); });
   var mx = Math.max(invSeq,d.seq||0); d.sales.forEach(function(s){ if(s.no>mx) mx = s.no; });
   db.doc('meta/counter').set({seq:mx});
 }
@@ -408,7 +416,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=24').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=25').catch(function(){}); });
   }
 }catch(e){}
 

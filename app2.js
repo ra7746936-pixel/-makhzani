@@ -142,7 +142,7 @@
     $('#suplist').innerHTML = list.length ? list.map(function(x){
       var b = balLabel(supStats(x).bal);
       return '<li class="item"><button type="button" class="sup-row" data-act="opensup" data-id="'+esc(x.id)+'">'+
-        '<span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone?'<span class="pmeta">'+esc(x.phone)+'</span>':'')+'</span>'+
+        '<span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone?'<span class="pmeta">'+esc(x.phone)+'</span>':'')+(x.custId && customers.get(x.custId) ? '<span class="pmeta">نفسه عميل كمان</span>' : '')+'</span>'+
         '<span class="pill '+b[1]+'">'+b[0]+'</span></button></li>';
     }).join('') : '<li class="note">لسه ماسجلتش موردين. ضيف أول مورد من فوق.</li>';
     if(!s) return;
@@ -547,7 +547,7 @@
 
   function withAll(cb){ if(typeof cloudAll==='function') cloudAll(cb); else cb(sales,aud); }
   function exportBackup(){ withAll(doExportBackup); }
-  function buildBackup(S,A){ return {app:'makhzani',version:1,exportedAt:Date.now(),products:Array.from(products.values()),sales:S,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),seq:invSeq,audit:A}; }
+  function buildBackup(S,A){ return {app:'makhzani',version:1,exportedAt:Date.now(),products:Array.from(products.values()),sales:S,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),expenses:Array.from(expenses.values()),seq:invSeq,audit:A}; }
   /* بتستخدمها خاصية الرفع على Drive (cloud.js) */
   window.mkBackupData = function(cb){ withAll(function(S,A){ cb(buildBackup(S,A)); }); };
   window.mkBackupDone = function(where){
@@ -611,7 +611,7 @@
           if(e.edited) o.edited = true;
           return o;
         });
-        sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),addr:String(s.addr||'').slice(0,160),entries:en,created:num(s.created,Date.now())});
+        sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),addr:String(s.addr||'').slice(0,160),custId:String(s.custId||''),entries:en,created:num(s.created,Date.now())});
       }
     });
     var cu = [];
@@ -621,8 +621,12 @@
           if(e.type==='sale') return {id:String(e.id),type:'sale',ts:num(e.ts,0),sid:String(e.sid||''),no:Math.floor(num(e.no,0)),total:num(e.total,0),paid:num(e.paid,0),by:String(e.by||'')};
           return {id:String(e.id),type:e.type,ts:num(e.ts,0),amount:num(e.amount,0),note:String(e.note||''),by:String(e.by||'')};
         });
-        cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),addr:String(c.addr||'').slice(0,160),entries:en,created:num(c.created,Date.now())});
+        cu.push({id:String(c.id),name:c.name,phone:String(c.phone||''),addr:String(c.addr||'').slice(0,160),supId:String(c.supId||''),entries:en,created:num(c.created,Date.now())});
       }
     });
-    return {products:ps,sales:ss,suppliers:sp,customers:cu,seq:Math.max(0,Math.floor(+d.seq||0))};
+    var ex = [];
+    (Array.isArray(d.expenses)?d.expenses:[]).forEach(function(x){
+      if(x && x.id && num(x.amount,0)>0 && typeof x.cat==='string' && x.cat) ex.push({id:String(x.id),ts:num(x.ts,0),cat:x.cat.slice(0,30),amount:num(x.amount,0),note:String(x.note||'').slice(0,80),by:String(x.by||'')});
+    });
+    return {products:ps,sales:ss,suppliers:sp,customers:cu,expenses:ex,seq:Math.max(0,Math.floor(+d.seq||0))};
   }

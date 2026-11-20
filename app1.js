@@ -12,6 +12,7 @@
   var products = new Map();
   var suppliers = new Map();
   var customers = new Map();
+  var expenses = new Map();
   var selSup = null, stockLimit = 50, SVC_QTY = 1000000000;
   function leftTxt(p){ return p.svc ? 'خدمة' : 'فاضل '+fmt(p.qty)+(p.unit ? ' '+p.unit : ''); }
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
@@ -52,6 +53,7 @@
         sales = d.sales||[];
         (d.suppliers||[]).forEach(function(s){ suppliers.set(s.id,s); });
         (d.customers||[]).forEach(function(c){ customers.set(c.id,c); });
+        (d.expenses||[]).forEach(function(x){ expenses.set(x.id,x); });
         invSeq = +d.seq||0;
       }
     }catch(e){}
@@ -65,7 +67,7 @@
     invSeq = mx;
   }
   function lsSave(){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({products:Array.from(products.values()),sales:sales,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),seq:invSeq})); }catch(e){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({products:Array.from(products.values()),sales:sales,suppliers:Array.from(suppliers.values()),customers:Array.from(customers.values()),expenses:Array.from(expenses.values()),seq:invSeq})); }catch(e){}
   }
   var chain = Promise.resolve();
   function enqueue(fn){
@@ -191,6 +193,9 @@
     customers.delete(id);
     persist(function(){ return db.doc('customers/'+id).delete(); });
   }
+  /* المصروفات (المالك بس): رواتب، إيجار، بنزين… */
+  function putExpense(x){ expenses.set(x.id,x); persist(function(){ return db.doc('expenses/'+x.id).set(x); }); }
+  function removeExpense(id){ expenses.delete(id); persist(function(){ return db.doc('expenses/'+id).delete(); }); }
   function removeSupplier(id){
     suppliers.delete(id);
     persist(function(){ return db.doc('suppliers/'+id).delete(); });
@@ -232,7 +237,7 @@
     });
   }
   function render(){ if(renderHold){ renderLate = true; return; } keepInputs(renderAll); }
-  function renderAll(){ renderStatus(); renderTabs(); renderSell(); renderStock(); renderSup(); renderCust(); renderInv(); renderReport(); renderInvEdit(); renderBackup(); renderMine(); renderSec(); renderRoleUI(); if(typeof renderCloudInfo==='function') renderCloudInfo(); }
+  function renderAll(){ renderStatus(); renderTabs(); renderSell(); renderStock(); renderSup(); renderCust(); renderInv(); if(typeof renderExp==='function'){ renderExp(); renderLinks(); } renderReport(); renderInvEdit(); renderBackup(); renderMine(); renderSec(); renderRoleUI(); if(typeof renderCloudInfo==='function') renderCloudInfo(); }
 
   function renderStatus(){
     var el = $('#sync');
@@ -249,7 +254,7 @@
 
   function renderTabs(){
     if(!tabAllowed(view)) view = 'sell';
-    ['sell','stock','sup','cust','inv','report','sec'].forEach(function(v){
+    ['sell','stock','sup','cust','inv','exp','report','sec'].forEach(function(v){
       $('#v-'+v).hidden = (v!==view);
       $('#t-'+v).setAttribute('aria-selected', v===view ? 'true':'false');
       $('#t-'+v).hidden = !tabAllowed(v);
@@ -374,9 +379,11 @@
     var owed = 0, custOwed = 0;
     suppliers.forEach(function(s){ var b = supStats(s).bal; if(b>0) owed += b; });
     customers.forEach(function(c){ var b = custStats(c).bal; if(b>0) custOwed += b; });
+    var exT = (typeof exSum==='function' && isOwner()) ? exSum(exIn(period==='today' ? 'today' : 'all')) : 0;
     $('#tiles').innerHTML =
       '<div class="tile"><span>مبيعات '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(rev)+'</strong>'+(period==='today'?'<small>'+fmt(r.invoices)+' فاتورة</small>':'')+'</div>'+
       '<div class="tile"><span>صافي الربح '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(pr.profit)+'</strong><small>'+(pr.unknown ? 'من غير '+fmt(pr.unknown)+' سطر مفيهوش سعر جملة' : 'الإيراد − سعر الجملة')+'</small></div>'+
+      (exT>0 ? '<div class="tile"><span>مصروفات '+(period==='today'?'النهارده':'من الأول')+'</span><strong>'+money(exT)+'</strong><small>رواتب وإيجار وبنزين…</small></div><div class="tile"><span>الربح بعد المصروفات</span><strong>'+money(round(pr.profit-exT))+'</strong><small>صافي الربح − المصروفات</small></div>' : '')+
       '<div class="tile"><span>قطع اتباعت</span><strong>'+fmt(pcs)+'</strong></div>'+
       '<div class="tile"><span>قيمة اللي فاضل في المخزن</span><strong>'+money(stockVal)+'</strong></div>'+
       '<div class="tile"><span>عدد الأصناف في المخزن</span><strong>'+fmt(products.size)+'</strong></div>'+

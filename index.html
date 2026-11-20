@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -25,7 +25,7 @@ setTimeout(function(){
     var d=document.createElement('div');
     d.style.cssText='background:#8F2A1F;color:#fff;padding:12px;margin:8px;border-radius:8px;font-size:14px';
     var v=(navigator.userAgent.match(/Chrome\/(\d+)/)||[])[1];
-    d.textContent='البرنامج مش شغال. تأكد إن كل الملفات (index.html و style.css و fb.js و app1.js و app2.js و app3.js و cloud.js و app4.js و app5.js) في نفس الفولدر واتنسخوا كاملين، وابعت الشريط ده لـ Claude. '+(window.__err?'(الخطأ: '+window.__err+') ':'')+'(Chrome '+(v||'مش معروف')+')';
+    d.textContent='البرنامج مش شغال. تأكد إن كل الملفات (index.html و style.css و fb.js و app1.js و app2.js و app3.js و cloud.js و app4.js و app5.js و app6.js) في نفس الفولدر واتنسخوا كاملين، وابعت الشريط ده لـ Claude. '+(window.__err?'(الخطأ: '+window.__err+') ':'')+'(Chrome '+(v||'مش معروف')+')';
     document.body.insertBefore(d,document.body.firstChild);
   }
 },15000);
@@ -44,6 +44,7 @@ setTimeout(function(){
       <button class="tab" role="tab" data-tab="sup" id="t-sup">الموردين</button>
       <button class="tab" role="tab" data-tab="cust" id="t-cust">العملاء</button>
       <button class="tab" role="tab" data-tab="inv" id="t-inv">الفواتير</button>
+      <button class="tab" role="tab" data-tab="exp" id="t-exp">المصروفات</button>
       <button class="tab" role="tab" data-tab="report" id="t-report">التقرير</button>
       <button class="tab" role="tab" data-tab="sec" id="t-sec" hidden>الأمان</button>
     </nav>
@@ -274,6 +275,8 @@ setTimeout(function(){
           <div id="sd-tiles" class="tiles"></div>
         </div>
 
+        <div class="panel" id="sd-link" hidden></div>
+
         <div class="panel inv-edit" id="ent-edit" hidden>
           <div class="sd-head">
             <h2 id="ee-title">تعديل حركة</h2>
@@ -427,6 +430,7 @@ setTimeout(function(){
             <div class="actions"><button class="btn" type="submit">سجّل الدين</button></div>
           </form>
         </div>
+        <div class="panel" id="cud-link" hidden></div>
         <div class="panel">
           <h2>حركات الحساب</h2>
           <ul id="cud-ledger" class="ledger"></ul>
@@ -452,6 +456,36 @@ setTimeout(function(){
         <ul id="inv-list" class="recent"></ul>
         <div class="row-actions"><button class="btn" type="button" id="inv-more" data-act="invmore" hidden>اعرض أكتر</button><button class="btn" type="button" id="inv-old" hidden>عرض الفواتير الأقدم من 45 يوم</button></div>
         <p class="hint" id="inv-note"></p>
+      </div>
+    </section>
+
+    <section id="v-exp" aria-labelledby="t-exp" hidden>
+      <div class="panel">
+        <h2>تسجيل مصروف</h2>
+        <form id="exform" class="pform" autocomplete="off">
+          <div><label for="ex-date">التاريخ</label><input id="ex-date" type="date"></div>
+          <div><label for="ex-cat">النوع</label><select id="ex-cat"></select></div>
+          <div class="wide" id="ex-new-wrap" hidden><label for="ex-new">اسم النوع الجديد</label><input id="ex-new" type="text" maxlength="30" placeholder="مثلا: عمولة توصيل"></div>
+          <div><label for="ex-amt">المبلغ</label><input id="ex-amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+          <div class="wide"><label for="ex-note">ملاحظة (اختياري)</label><input id="ex-note" type="text" maxlength="80" placeholder="مثلا: مرتب أحمد عن شهر 11"></div>
+          <div class="actions"><button class="btn primary" type="submit">سجّل المصروف</button></div>
+        </form>
+      </div>
+      <div class="panel">
+        <h2>المصروفات</h2>
+        <div class="seg seg4" role="group" aria-label="الفترة">
+          <button type="button" data-exper="today" aria-pressed="false">النهارده</button>
+          <button type="button" data-exper="month" aria-pressed="true">الشهر ده</button>
+          <button type="button" data-exper="prev" aria-pressed="false">الشهر اللي فات</button>
+          <button type="button" data-exper="all" aria-pressed="false">من الأول</button>
+        </div>
+        <div id="ex-tiles" class="tiles"></div>
+        <h3>حسب النوع</h3>
+        <div class="tbl-wrap"><table><thead><tr><th>النوع</th><th class="n">الإجمالي</th><th class="n">النسبة</th></tr></thead><tbody id="ex-bycat"></tbody></table></div>
+      </div>
+      <div class="panel">
+        <h2>التفاصيل</h2>
+        <ul id="ex-list" class="ledger"></ul>
       </div>
     </section>
 
@@ -671,12 +705,13 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=24" charset="utf-8"></script>
-<script src="app1.js?v=24" charset="utf-8"></script>
-<script src="app2.js?v=24" charset="utf-8"></script>
-<script src="app3.js?v=24" charset="utf-8"></script>
-<script src="cloud.js?v=24" charset="utf-8"></script>
-<script src="app4.js?v=24" charset="utf-8"></script>
-<script src="app5.js?v=24" charset="utf-8"></script>
+<script src="fb.js?v=25" charset="utf-8"></script>
+<script src="app1.js?v=25" charset="utf-8"></script>
+<script src="app2.js?v=25" charset="utf-8"></script>
+<script src="app3.js?v=25" charset="utf-8"></script>
+<script src="cloud.js?v=25" charset="utf-8"></script>
+<script src="app4.js?v=25" charset="utf-8"></script>
+<script src="app6.js?v=25" charset="utf-8"></script>
+<script src="app5.js?v=25" charset="utf-8"></script>
 </body>
 </html>

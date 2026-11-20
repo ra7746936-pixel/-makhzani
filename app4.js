@@ -394,7 +394,7 @@
       return;
     }
     logA('restore','استرجاع نسخة احتياطية ('+pendingRestore.products.length+' صنف، '+pendingRestore.sales.length+' فاتورة، '+pendingRestore.suppliers.length+' مورد)');
-    var oldIds = {p:Array.from(products.keys()),s:(pendingRestore.__all||sales.map(function(x){ return x.id; })),u:Array.from(suppliers.keys()),c:Array.from(customers.keys())};
+    var oldIds = {p:Array.from(products.keys()),s:(pendingRestore.__all||sales.map(function(x){ return x.id; })),u:Array.from(suppliers.keys()),c:Array.from(customers.keys()),e:Array.from(expenses.keys())};
     products = new Map();
     pendingRestore.products.forEach(function(p){ products.set(p.id,p); });
     sales = pendingRestore.sales;
@@ -403,6 +403,7 @@
     suppliers = new Map();
     pendingRestore.suppliers.forEach(function(s){ suppliers.set(s.id,s); });
     customers = new Map(); (pendingRestore.customers||[]).forEach(function(c){ customers.set(c.id,c); });
+    expenses = new Map(); (pendingRestore.expenses||[]).forEach(function(x){ expenses.set(x.id,x); });
     selSup = null;
     cart = {}; 
     if(mode==='cloud') cloudRestoreWrite(pendingRestore,oldIds);
@@ -523,6 +524,8 @@
       custTot += Math.max(st.bal,0);
       if((c.entries||[]).length) cbal.push([c.name,c.phone||'',c.addr||'',round(st.bought),'دفع '+round(st.paid)+(dbt?' · دين قديم '+round(dbt):''),round(st.bal)]);
     });
+    var exr = [['التاريخ','النوع','المبلغ','ملاحظة']], exTotAll = 0;
+    Array.from(expenses.values()).sort(function(a,b){ return b.ts-a.ts; }).forEach(function(x){ exTotAll += x.amount; exr.push([dt(x.ts).split(' ')[0],x.cat,round(x.amount),x.note||'']); });
     var sm = [['البند','القيمة'],
       ['تاريخ النسخة',dt(Date.now())],
       ['عدد الأصناف',prods.length],
@@ -532,8 +535,9 @@
       ['صافي الربح',round(profit)],
       ['عدد الموردين',sups.length],
       ['إجمالي أرصدة الموردين (موجب = عليك)',round(totalBal)],
-      ['إجمالي مستحق من العملاء',round(custTot)]];
-    var sheets = [['الأصناف',itm,[28,12,14,12,16,22,12,18,18,12,14,10]],['الفواتير',inv,[14,18,14,28,10,12,12,12,12]],['حركات الموردين',sup,[20,18,10,26,10,12,14,12,24]],['أرصدة الموردين',bal,[22,16,16,12,12,30]],['أرصدة العملاء',cbal,[22,16,18,28,18]],['ملخص',sm,[40,22]]];
+      ['إجمالي مستحق من العملاء',round(custTot)],
+      ['إجمالي المصروفات',round(exTotAll)]];
+    var sheets = [['الأصناف',itm,[28,12,14,12,16,22,12,18,18,12,14,10]],['الفواتير',inv,[14,18,14,28,10,12,12,12,12]],['حركات الموردين',sup,[20,18,10,26,10,12,14,12,24]],['أرصدة الموردين',bal,[22,16,16,12,12,30]],['أرصدة العملاء',cbal,[22,16,18,28,18]],['المصروفات',exr,[14,18,12,40]],['ملخص',sm,[40,22]]];
     return xlsxFromSheets(sheets);
   }
   function doExportXlsx(sales){

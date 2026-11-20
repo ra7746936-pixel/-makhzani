@@ -511,7 +511,7 @@ function renderCust(){
   $('#custlist').innerHTML = list.length ? list.map(function(x){
     var inv = custInvoices(x.id), tot = 0; inv.forEach(function(s){ tot += s.total; });
     var cb = custBal(custStats(x).bal);
-    return '<li class="item"><button type="button" class="sup-row" data-act="opencust" data-id="'+esc(x.id)+'"><span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone ? '<span class="pmeta">'+esc(x.phone)+'</span>' : '')+'<span class="pmeta">'+fmt(inv.length)+' فاتورة · '+money(round(tot))+'</span></span><span class="pill '+cb[1]+'">'+cb[0]+'</span></button></li>';
+    return '<li class="item"><button type="button" class="sup-row" data-act="opencust" data-id="'+esc(x.id)+'"><span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone ? '<span class="pmeta">'+esc(x.phone)+'</span>' : '')+(x.supId && suppliers.get(x.supId) ? '<span class="pmeta">نفسه مورد كمان</span>' : '')+'<span class="pmeta">'+fmt(inv.length)+' فاتورة · '+money(round(tot))+'</span></span><span class="pill '+cb[1]+'">'+cb[0]+'</span></button></li>';
   }).join('') : '<li class="note">'+(q ? 'مفيش عميل بالاسم ده.' : 'لسه ماسجلتش عملاء. ضيف أول عميل من فوق.')+'</li>';
   if(c){
     var inv2 = custInvoices(c.id), t2 = 0; inv2.forEach(function(s){ t2 += s.total; });
@@ -547,7 +547,8 @@ $('#cdb-form').addEventListener('submit',function(e){
 });
 $('#cust').addEventListener('change',function(){ $('#paid-row').hidden = !$('#cust').value; if(!$('#cust').value) $('#paid').value = ''; });
 function addCustomer(name,phone,addr){
-  var c = {id:uid(),name:name,phone:phone||'',addr:(addr||'').slice(0,160),created:Date.now()};
+  var c = {id:uid(),name:name,phone:phone||'',created:Date.now()};
+  if(addr) c.addr = String(addr).slice(0,160);
   logA('cust','ضاف عميل: '+name);
   putCustomer(c);
   return c;
@@ -578,7 +579,7 @@ document.addEventListener('click',function(e){
     if(!ready()) return;
     var n = window.prompt('اسم العميل:'); n = n ? n.trim() : ''; if(!n) return;
     var ph = window.prompt('التليفون (اختياري):') || '';
-    var ad = window.prompt('العنوان (اختياري):') || '';
+    var ad = isOwner() ? (window.prompt('العنوان (اختياري):') || '') : '';
     var c = addCustomer(n,ph.trim(),ad.trim()); renderCustSel(); $('#cust').value = c.id; toast('اتضاف العميل: '+n);
   }
   else if(act==='editcust'){
@@ -634,6 +635,11 @@ function setUnitSel(u){
       var m = new Map();
       snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
       customers = m; render();
+    },fail);
+    db.collection('expenses').onSnapshot(function(snap){
+      var m = new Map();
+      snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
+      expenses = m; render();
     },fail);
     render();
   }
