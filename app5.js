@@ -528,14 +528,15 @@ function renderCust(){
   var list = Array.from(customers.values()).filter(function(x){ return !q || x.name.toLowerCase().indexOf(q)>=0 || (x.phone||'').indexOf(q)>=0 || (x.addr||'').toLowerCase().indexOf(q)>=0; }).sort(byName);
   $('#custlist').innerHTML = list.length ? list.map(function(x){
     var inv = custInvoices(x.id), tot = 0; inv.forEach(function(s){ tot += s.total; });
-    var cb = custBal(custStats(x).bal);
+    var ln = linkedNet('cust',x), cb = custBal(ln===null ? custStats(x).bal : ln);
+    if(ln!==null) cb = ['صافي: '+cb[0],cb[1]];
     return '<li class="item"><button type="button" class="sup-row" data-act="opencust" data-id="'+esc(x.id)+'"><span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone ? '<span class="pmeta">'+esc(x.phone)+'</span>' : '')+(x.supId && suppliers.get(x.supId) ? '<span class="pmeta">نفسه مورد كمان</span>' : '')+'<span class="pmeta">'+fmt(inv.length)+' فاتورة · '+money(round(tot))+'</span></span><span class="pill '+cb[1]+'">'+cb[0]+'</span></button></li>';
   }).join('') : '<li class="note">'+(q ? 'مفيش عميل بالاسم ده.' : 'لسه ماسجلتش عملاء. ضيف أول عميل من فوق.')+'</li>';
   if(c){
     var inv2 = custInvoices(c.id), t2 = 0; inv2.forEach(function(s){ t2 += s.total; });
     $('#cud-name').textContent = c.name; $('#cud-phone').textContent = [c.phone ? 'التليفون: '+c.phone : 'من غير تليفون', c.addr ? 'العنوان: '+c.addr : ''].filter(Boolean).join(' · ');
-    var cs = custStats(c), cb2 = custBal(cs.bal);
-    $('#cud-tiles').innerHTML = '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(inv2.length)+'</strong></div><div class="tile"><span>إجمالي مشترياته</span><strong>'+money(round(t2))+'</strong></div><div class="tile"><span>اللي دفعه بعدين</span><strong>'+money(cs.paid)+'</strong></div><div class="tile"><span>الرصيد</span><strong>'+cb2[0]+'</strong></div>';
+    var cs = custStats(c), cb2 = custBal(cs.bal), lnC = linkedNet('cust',c), cb3 = lnC!==null ? custBal(lnC) : null;
+    $('#cud-tiles').innerHTML = '<div class="tile"><span>عدد الفواتير</span><strong>'+fmt(inv2.length)+'</strong></div><div class="tile"><span>إجمالي مشترياته</span><strong>'+money(round(t2))+'</strong></div><div class="tile"><span>اللي دفعه بعدين</span><strong>'+money(cs.paid)+'</strong></div><div class="tile"><span>الرصيد'+(cb3?' (كعميل بس)':'')+'</span><strong>'+cb2[0]+'</strong></div>'+(cb3 ? '<div class="tile"><span>الصافي</span><strong>'+cb3[0]+'</strong><small>بعد خصم حسابه كمورد</small></div>' : '');
     $('#cud-owner').hidden = !isOwner();
     var en = (c.entries||[]).slice().sort(function(a,b){ return b.ts-a.ts; });
     $('#cud-ledger').innerHTML = en.length ? en.map(function(e){

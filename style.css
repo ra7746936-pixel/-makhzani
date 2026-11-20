@@ -293,3 +293,7 @@ html.authing #app{display:none}
 .seg4{grid-template-columns:repeat(4,auto);max-width:100%;overflow-x:auto}
 .seg4 button{padding:8px 12px;white-space:nowrap}
 .lk-q{width:100%;margin-bottom:6px}
+
+.receipt .rc-qr{text-align:center;font-size:11px;border-bottom:0;padding-top:6px}
+.receipt .rc-qr svg{display:block;margin:4px auto 0;width:30mm;height:30mm}
+.receipt.r58 .rc-qr svg{width:26mm;height:26mm}

@@ -1,4 +1,4 @@
-window.APP_VER = 'v26';
+window.APP_VER = 'v27';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -153,7 +153,7 @@ function cloudDataStart(shopId){
     sec = {v:1,owner:null,users:[],cfg:{pinInv:true,pinStock:true,autoLock:0,phone:''},used:[]};
     db.watch('meta/print',function(s){
       var pc = s.exists() ? s.data() : null;
-      if(pc){ shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80'}; }
+      if(pc){ shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''}; }
     },function(){});
   } else {
   /* المصروفات: للمالك بس */
@@ -178,7 +178,7 @@ function cloudDataStart(shopId){
     snap.docs.forEach(function(d){
       if(d.id==='sec'){ try{ cd = JSON.parse(d.data().data); }catch(e){} }
       if(d.id==='backup'){ cloudLastBackup = +d.data().ts || 0; try{ renderBackup(); }catch(e){} }
-      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80'}; cloudPrintFill(); }
+      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''}; cloudPrintFill(); }
     });
     cloudSecSync(cd,shopId,!fc);
     if(!metaOk && (!fc || cd)){ metaOk = true; clearTimeout(metaTimer); got('m'); }
@@ -237,7 +237,7 @@ function cloudSecSync(cd,shopId,confirmed){
 function cloudPrintFill(){
   var a = document.activeElement;
   if(a && /^ps-/.test(a.id||'')) return;
-  try{ $('#ps-name').value = shopCfg.name||''; $('#ps-foot').value = shopCfg.foot||''; $('#ps-w').value = shopCfg.w==='58' ? '58' : '80'; }catch(e){}
+  try{ $('#ps-name').value = shopCfg.name||''; $('#ps-foot').value = shopCfg.foot||''; $('#ps-w').value = shopCfg.w==='58' ? '58' : '80'; $('#ps-qr').value = shopCfg.qr||''; $('#ps-qrt').value = shopCfg.qrt||''; }catch(e){}
 }
 /* ---- رقم الجهاز + ترقيم فواتير الأوفلاين ---- */
 function cloudDevId(){
@@ -416,7 +416,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=26').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=27').catch(function(){}); });
   }
 }catch(e){}
 

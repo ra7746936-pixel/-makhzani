@@ -40,7 +40,7 @@
   var editSale = null, draft = [], pendingCancelInv = false, cancelInvTimer = null, lastIeOpts = '';
   var editEnt = null, lastRtOpts = '';
   var invSeq = 0;
-  var lastSaleId = null, shopCfg = {name:'',foot:'',w:'80'};
+  var lastSaleId = null, shopCfg = {name:'',foot:'',w:'80',qr:'',qrt:''};
 
   /* ---------- حفظ ---------- */
   var LS_KEY = 'makhzani-v1';

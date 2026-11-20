@@ -176,7 +176,7 @@
     if(tg==='INPUT' || tg==='TEXTAREA' || tg==='SELECT') return;
     $('#q').focus();
   });
-  ['#ps-name','#ps-foot','#ps-w'].forEach(function(id){ $(id).addEventListener('change',saveShopCfg); });
+  ['#ps-name','#ps-foot','#ps-w','#ps-qr','#ps-qrt'].forEach(function(id){ $(id).addEventListener('change',saveShopCfg); });
   $('#f-cancel').addEventListener('click',resetForm);
 
   $('#cart').addEventListener('change',function(e){

@@ -127,6 +127,11 @@
     if(bal<0) return ['ليا عنده '+money(-bal),'ok'];
     return ['متسوّي','zero'];
   }
+  /* الشخص اللي عميل ومورد: الصافي بعد ما حسابه كعميل وحسابه كمورد يتخصموا من بعض (من غير ما نلمس سجل أي حساب). null لو مش مربوط */
+  function linkedNet(side,x){
+    if(side==='cust'){ var s = x.supId ? suppliers.get(x.supId) : null; return s ? round(custStats(x).bal-supStats(s).bal) : null; }
+    var c = x.custId ? customers.get(x.custId) : null; return c ? round(supStats(x).bal-custStats(c).bal) : null;
+  }
   function dt(ts){
     var d = new Date(ts), z = function(n){ n = String(n); return n.length<2 ? '0'+n : n; };
     return z(d.getDate())+'/'+z(d.getMonth()+1)+'/'+d.getFullYear()+' '+z(d.getHours())+':'+z(d.getMinutes());
@@ -140,14 +145,16 @@
 
     var list = Array.from(suppliers.values()).sort(byName);
     $('#suplist').innerHTML = list.length ? list.map(function(x){
-      var b = balLabel(supStats(x).bal);
+      var ln = linkedNet('sup',x), b = balLabel(ln===null ? supStats(x).bal : ln);
+      if(ln!==null) b = ['صافي: '+b[0],b[1]];
       return '<li class="item"><button type="button" class="sup-row" data-act="opensup" data-id="'+esc(x.id)+'">'+
         '<span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone?'<span class="pmeta">'+esc(x.phone)+'</span>':'')+(x.custId && customers.get(x.custId) ? '<span class="pmeta">نفسه عميل كمان</span>' : '')+'</span>'+
         '<span class="pill '+b[1]+'">'+b[0]+'</span></button></li>';
     }).join('') : '<li class="note">لسه ماسجلتش موردين. ضيف أول مورد من فوق.</li>';
     if(!s) return;
 
-    var st = supStats(s), b = balLabel(st.bal);
+    var st = supStats(s), b = balLabel(st.bal), lnS = linkedNet('sup',s);
+    if(lnS!==null){ b = balLabel(lnS); b = ['صافي: '+b[0],b[1]]; }
     $('#sd-name').textContent = s.name;
     $('#sd-phone').textContent = [s.phone ? 'تليفون: '+s.phone : '', s.addr ? 'العنوان: '+s.addr : ''].filter(Boolean).join(' · ');
     $('#sd-pill').textContent = b[0];
@@ -157,7 +164,8 @@
       '<div class="tile"><span>إجمالي البضاعة منه</span><strong>'+money(st.bought)+'</strong></div>'+
       '<div class="tile"><span>اللي دفعته</span><strong>'+money(st.paid)+'</strong></div>'+
       (st.ret>0?'<div class="tile"><span>مرتجعات رجّعتها له</span><strong>'+money(st.ret)+'</strong></div>':'')+
-      '<div class="tile"><span>'+(st.bal<0?'ليا عنده':'الباقي له عندي')+'</span><strong>'+money(Math.abs(st.bal))+'</strong></div>';
+      '<div class="tile"><span>'+(st.bal<0?'ليا عنده':'الباقي له عندي')+(lnS!==null?' (كمورد بس)':'')+'</span><strong>'+money(Math.abs(st.bal))+'</strong></div>'+
+      (lnS!==null?'<div class="tile"><span>'+(lnS<0?'صافي: ليا عنده':lnS>0?'صافي: له عندي':'الصافي')+'</span><strong>'+(lnS===0?'متسوّي':money(Math.abs(lnS)))+'</strong><small>بعد خصم حسابه كعميل</small></div>':'');
 
     var opts = '<option value="">اختار الصنف…</option>'+
       Array.from(products.values()).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'; }).join('')+
@@ -296,10 +304,13 @@
   /* ---------- الطباعة ---------- */
   function loadShopCfg(){
     try{ var r = localStorage.getItem('makhzani-print'); if(r) shopCfg = Object.assign(shopCfg,JSON.parse(r)); }catch(e){}
-    $('#ps-name').value = shopCfg.name||''; $('#ps-foot').value = shopCfg.foot||''; $('#ps-w').value = shopCfg.w==='58' ? '58' : '80';
+    $('#ps-name').value = shopCfg.name||''; $('#ps-foot').value = shopCfg.foot||''; $('#ps-w').value = shopCfg.w==='58' ? '58' : '80'; $('#ps-qr').value = shopCfg.qr||''; $('#ps-qrt').value = shopCfg.qrt||'';
   }
   function saveShopCfg(){
-    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80'};
+    var qr = $('#ps-qr').value.trim();
+    if(qr && !/^[a-z][a-z0-9+.-]*:/i.test(qr)) qr = 'https://'+qr.replace(/^\/+/,'');
+    if(qr && (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(qr) || !qrSvg(qr))){ toast(qrSvg(qr)==='' && qr.length>150 ? 'اللينك طويل أوي للكيو ار كود' : 'اللينك مش مظبوط، اكتبه زي facebook.com/اسم-الصفحة',true); qr = ''; $('#ps-qr').value = ''; }
+    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80',qr:qr,qrt:$('#ps-qrt').value.trim()};
     try{ localStorage.setItem('makhzani-print',JSON.stringify(shopCfg)); }catch(e){}
     if(mode==='cloud' && db) db.doc('meta/print').set(shopCfg);
     toast('اتحفظت بيانات الفاتورة');
@@ -331,7 +342,8 @@
         kv('الإجمالي',money(s.total),'rc-grand')+
         (s.paid!=null && s.paid<s.total ? kv('المدفوع',money(s.paid))+kv('المتبقي على العميل',money(round(s.total-s.paid)),'rc-due') : '')+
       '</div>'+
-      (shopCfg.foot ? '<div class="rc-sec rc-foot">'+esc(shopCfg.foot)+'</div>' : '');
+      (shopCfg.foot ? '<div class="rc-sec rc-foot">'+esc(shopCfg.foot)+'</div>' : '')+
+      (shopCfg.qr && window.qrSvg && qrSvg(shopCfg.qr) ? '<div class="rc-sec rc-qr">'+(shopCfg.qrt ? '<div>'+esc(shopCfg.qrt)+'</div>' : '')+qrSvg(shopCfg.qr)+'</div>' : '');
   }
   function printSale(sid){
     var s = findSale(sid);
