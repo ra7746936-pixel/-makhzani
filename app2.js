@@ -143,14 +143,15 @@
     $('#sup-list-view').hidden = !!s;
     $('#sup-detail').hidden = !s;
 
-    var list = Array.from(suppliers.values()).sort(byName);
+    var sq = (($('#su-q')||{}).value||'').trim().toLowerCase();
+    var list = Array.from(suppliers.values()).filter(function(x){ return !sq || x.name.toLowerCase().indexOf(sq)>=0 || (x.phone||'').indexOf(sq)>=0 || (x.addr||'').toLowerCase().indexOf(sq)>=0; }).sort(byName);
     $('#suplist').innerHTML = list.length ? list.map(function(x){
       var ln = linkedNet('sup',x), b = balLabel(ln===null ? supStats(x).bal : ln);
       if(ln!==null) b = ['صافي: '+b[0],b[1]];
       return '<li class="item"><button type="button" class="sup-row" data-act="opensup" data-id="'+esc(x.id)+'">'+
         '<span class="sup-main"><strong>'+esc(x.name)+'</strong>'+(x.phone?'<span class="pmeta">'+esc(x.phone)+'</span>':'')+(x.custId && customers.get(x.custId) ? '<span class="pmeta">نفسه عميل كمان</span>' : '')+'</span>'+
         '<span class="pill '+b[1]+'">'+b[0]+'</span></button></li>';
-    }).join('') : '<li class="note">لسه ماسجلتش موردين. ضيف أول مورد من فوق.</li>';
+    }).join('') : '<li class="note">'+(sq ? 'مفيش مورد بالاسم ده.' : 'لسه ماسجلتش موردين. ضيف أول مورد من فوق.')+'</li>';
     if(!s) return;
 
     var st = supStats(s), b = balLabel(st.bal), lnS = linkedNet('sup',s);

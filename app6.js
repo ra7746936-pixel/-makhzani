@@ -261,3 +261,6 @@ document.addEventListener('click',function(e){
 });
 /* تغيير العميل أو المدفوع أو التوصيل بيتحفظ في المسودة علطول */
 ['#cust','#paid','#fee'].forEach(function(id){ var e = document.querySelector(id); if(e){ e.addEventListener('change',ctSave); e.addEventListener('input',ctSave); } });
+
+/* بحث قايمة الموردين */
+(function(){ var e = document.querySelector('#su-q'); if(e) e.addEventListener('input',function(){ renderSup(); }); })();
