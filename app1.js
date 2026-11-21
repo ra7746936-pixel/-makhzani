@@ -18,7 +18,7 @@
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
   var lastOpts = '';
   var sales = [];
-  var cart = {}, cartPrice = {};
+  var cart = {}, cartPrice = {}, cartSeq = {}, cartN = 0;
   /* تغيير سعر الصنف وقت البيع: المالك دايما، والكاشير لو المالك سمح */
   function canPrice(){ return (typeof isOwner==='function' && isOwner()) || shopCfg.cp===true; }
   /* عرض الكمية: كرتونة كاملة تتكتب "1 كرتونة" مش 20 كيس */
@@ -290,7 +290,10 @@
     }).join('')+(sellTotal>list.length ? '<li class="note">فيه '+fmt(sellTotal-list.length)+' صنف تاني. اكتب في البحث أو امسح الباركود عشان تلاقيه.</li>' : '') : '<li class="note">'+(products.size ? 'مفيش صنف بالاسم ده.' : 'لسه مفيش أصناف. افتح «المخزن» وضيف أول صنف.')+'</li>';
 
     cleanCart();
-    var ids = Object.keys(cart), total = 0;
+    /* آخر صنف اتضاف بيبقى أول واحد فوق (عشان البياع يعدّل سعره وكميته من غير ما ينزل)، والأقدم تحت */
+    Object.keys(cartSeq).forEach(function(id){ if(!(id in cart)) delete cartSeq[id]; });
+    Object.keys(cart).forEach(function(id){ if(!cartSeq[id]) cartSeq[id] = ++cartN; });
+    var ids = Object.keys(cart).sort(function(a,b){ return cartSeq[b]-cartSeq[a]; }), total = 0;
     var af = document.activeElement, typing = !!(af && af.matches && af.matches('#cart [data-qty],#cart [data-price]'));
     /* لو البياع بيكتب كمية أو سعر، مبنعيدش رسم السلة (أي مزامنة بتيجي من جهاز تاني متقطعش كتابته) */
     var cartHtml = ids.length ? ids.map(function(id){

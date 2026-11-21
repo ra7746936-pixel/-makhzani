@@ -196,7 +196,7 @@ function ctField(id){ var e = document.querySelector(id); return e ? e.value : '
 function ctSnap(){ return {cart:cart,price:cartPrice,cust:ctField('#cust'),paid:ctField('#paid'),fee:ctField('#fee')}; }
 function ctItems(s){ return Object.keys(s.cart||{}).length; }
 function ctLoad(s){
-  cart = s.cart || {}; cartPrice = s.price || {};
+  cart = s.cart || {}; cartPrice = s.price || {}; cartSeq = {};
   var cu = s.cust && customers.get(s.cust) ? customers.get(s.cust) : null;
   $('#cust-q').value = cu ? cu.name : ''; renderCustSel(); $('#cust').value = cu ? cu.id : ''; renderCustSel();
   $('#paid').value = s.paid || ''; $('#fee').value = s.fee || '';

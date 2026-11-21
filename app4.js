@@ -13,13 +13,13 @@
         if(!p || p.qty<=0) return;
         var cur = cart[id]||0, next = round(Math.min(cur+1,p.qty));
         if(next===cur){ toast('وصلت لآخر كمية متاحة من '+p.name,true); return; }
-        cart[id] = next; renderSell(); focusQ(); break;
+        cart[id] = next; $('#q').value = ''; renderSell(); focusQ(); break;
       }
       case 'addc': {
         if(!p || !(p.pack>1)) return;
         var cc = cart[id]||0, nc = round(cc+p.pack);
         if(nc>p.qty){ toast('المتاح من '+p.name+' '+fmt(p.qty)+' قطعة بس، مش كرتونة كاملة',true); return; }
-        cart[id] = nc; renderSell(); focusQ(); break;
+        cart[id] = nc; $('#q').value = ''; renderSell(); focusQ(); break;
       }
       case 'inc': {
         if(!p) return;
