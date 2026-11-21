@@ -1,4 +1,4 @@
-window.APP_VER = 'v30';
+window.APP_VER = 'v32';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -40,7 +40,7 @@ function cloudErrMsg(e){
 }
 /* كل محل مفصول: أي حاجة محفوظة على الجهاز (بيانات فاتورة، PIN، كاشيرين، سجل أمان) بتتمسح لو آخر محل دخل الجهاز ده مش نفس المحل.
    من غير كده محل تاني على نفس الجهاز كان ممكن يشوف اسم المحل القديم على الفاتورة، أو كاشيرين المحل القديم يتنقلوا لمحله. بيرجّع true لو عمل إعادة تحميل. */
-var SHOP_MARK = 'makhzani-shop', SHOP_KEYS = ['makhzani-print','makhzani-sec','makhzani-audit','makhzani-fail','makhzani-lastuser','makhzani-lastbackup','makhzani-sec-migrated','makhzani-aud-migrated','makhzani-migrated'];
+var SHOP_MARK = 'makhzani-shop', SHOP_KEYS = ['makhzani-print','makhzani-drafts','makhzani-sec','makhzani-audit','makhzani-fail','makhzani-lastuser','makhzani-lastbackup','makhzani-sec-migrated','makhzani-aud-migrated','makhzani-migrated'];
 function cloudIsolate(shopId){
   var mark = null; try{ mark = localStorage.getItem(SHOP_MARK); }catch(e){ return false; }
   if(mark===shopId) return false;
@@ -171,6 +171,7 @@ function cloudDataStart(shopId){
     db.watch('meta/print',function(s){
       var pc = s.exists() ? s.data() : null;
       shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true} : {name:'',foot:'',w:'80',qr:'',qrt:'',cp:false};
+      render();
     },function(){});
   } else {
   /* المصروفات: للمالك بس */
@@ -433,7 +434,16 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=30').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=32').catch(function(){}); });
+    /* لما تنزل نسخة جديدة: البرنامج بيعيد تحميل نفسه لوحده لو مفيش فاتورة مفتوحة، ولو فيه بيقولك تفتحه تاني بعد الفاتورة */
+    var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(!hadCtl){ hadCtl = true; return; }
+      if(reloaded) return;
+      var busy = false; try{ busy = typeof cartsBusy==='function' ? cartsBusy() : Object.keys(cart).length>0; }catch(e){}
+      if(busy){ toast('نزلت نسخة جديدة من البرنامج. بعد ما تخلص الفاتورة اقفله وافتحه تاني.'); return; }
+      reloaded = true; location.reload();
+    });
   }
 }catch(e){}
 

@@ -472,6 +472,7 @@
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
     cart = {}; cartPrice = {};
+    if(typeof cartsAfterSale==='function') cartsAfterSale();
     if(mode==='cloud'){
       /* رقم الفاتورة من عدّاد المحل كله. لو مفيش نت بنكمل برقم مؤقت من أكبر رقم الجهاز شايفه */
       var floor = invSeq;

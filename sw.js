@@ -1,5 +1,5 @@
 /* مخزني: خدمة التشغيل بدون نت. الملفات بتتحمّل من النت لو موجود، ولو مفيش بتتفتح من النسخة المحفوظة على الجهاز. */
-var VER = 'mk-v30';
+var VER = 'mk-v32';
 self.addEventListener('install',function(e){ self.skipWaiting(); });
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(ks){
@@ -15,7 +15,7 @@ self.addEventListener('fetch',function(e){
   e.respondWith(
     new Promise(function(res,rej){
       var done = false, t = setTimeout(function(){ if(!done){ done = true; rej(new Error('slow')); } },r.mode==='navigate' ? 5000 : 8000);
-      fetch(r).then(function(x){ if(!done){ done = true; clearTimeout(t); res(x); } },function(err){ if(!done){ done = true; clearTimeout(t); rej(err); } });
+      fetch(r,{cache:'no-cache'}).then(function(x){ if(!done){ done = true; clearTimeout(t); res(x); } },function(err){ if(!done){ done = true; clearTimeout(t); rej(err); } });
     }).then(function(resp){
       if(resp && (resp.ok || resp.type==='opaque')){
         var copy = resp.clone();

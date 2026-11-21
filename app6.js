@@ -187,3 +187,77 @@ document.addEventListener('keydown',function(e){
   if(!first || !isOwner() || !ready()) return;
   lkQ[side] = ''; sel.value = first.value; sel.dispatchEvent(new Event('change',{bubbles:true}));
 });
+
+/* ---------- أكتر من فاتورة مفتوحة في نفس الوقت ----------
+   كل فاتورة ليها سلتها وسعرها المعدّل والعميل والمدفوع والتوصيل. اللي معروضة هي اللي في cart/cartPrice، والباقي محفوظ هنا ومنفصل تماما.
+   البيع بيتم للفاتورة اللي قدامك بس. والفواتير المفتوحة بتتحفظ على الجهاز عشان لو الصفحة اتقفلت أو اتحدثت متضيعش. */
+var CT_KEY = 'makhzani-drafts', CT_MAX = 4, ctSlots = [{}], ctCur = 0, ctBooted = false;
+function ctField(id){ var e = document.querySelector(id); return e ? e.value : ''; }
+function ctSnap(){ return {cart:cart,price:cartPrice,cust:ctField('#cust'),paid:ctField('#paid'),fee:ctField('#fee')}; }
+function ctItems(s){ return Object.keys(s.cart||{}).length; }
+function ctLoad(s){
+  cart = s.cart || {}; cartPrice = s.price || {};
+  var cu = s.cust && customers.get(s.cust) ? customers.get(s.cust) : null;
+  $('#cust-q').value = cu ? cu.name : ''; renderCustSel(); $('#cust').value = cu ? cu.id : ''; renderCustSel();
+  $('#paid').value = s.paid || ''; $('#fee').value = s.fee || '';
+}
+function ctSave(){
+  if(!ctBooted) return;
+  try{
+    var all = ctSlots.slice(); all[ctCur] = ctSnap();
+    if(all.every(function(s){ return !ctItems(s); })) localStorage.removeItem(CT_KEY);
+    else localStorage.setItem(CT_KEY,JSON.stringify({ts:Date.now(),cur:ctCur,slots:all}));
+  }catch(e){}
+}
+function cartsBusy(){ return ctSlots.some(function(s,i){ return ctItems(i===ctCur ? ctSnap() : s)>0; }); }
+function cartsBoot(){
+  if(ctBooted || mode==='pending' || !sess) return;
+  ctBooted = true;
+  if(ctItems({cart:cart})) return;
+  try{
+    var d = JSON.parse(localStorage.getItem(CT_KEY) || 'null');
+    if(!d || !d.slots || Date.now()-d.ts > 12*3600000) return;
+    ctSlots = d.slots.slice(0,CT_MAX); ctCur = Math.min(d.cur||0,ctSlots.length-1);
+    ctLoad(ctSlots[ctCur]);
+  }catch(e){}
+}
+function cartsReset(){ ctSlots = [{}]; ctCur = 0; try{ localStorage.removeItem(CT_KEY); }catch(e){} }
+function cartsAfterSale(){
+  if(ctSlots.length>1){ ctSlots.splice(ctCur,1); ctCur = Math.min(ctCur,ctSlots.length-1); ctLoad(ctSlots[ctCur]); }
+  else ctSlots[0] = {};
+}
+function renderCartTabs(){
+  var el = $('#ctabs'); if(!el) return;
+  ctSave();
+  if(ctSlots.length<2 && !ctItems({cart:cart})){ el.hidden = false; el.innerHTML = '<button type="button" class="ctab add" data-ct="new" title="افتح فاتورة تانية جنب دي">+ فاتورة تانية</button>'; return; }
+  el.hidden = false;
+  el.innerHTML = ctSlots.map(function(s,i){
+    var live = i===ctCur ? ctSnap() : s, n = ctItems(live), tot = 0;
+    Object.keys(live.cart||{}).forEach(function(id){ var p = products.get(id); if(p) tot += live.cart[id]*((live.price||{})[id]!=null ? live.price[id] : p.price); });
+    return '<span class="ctab'+(i===ctCur?' on':'')+'" role="tab" aria-selected="'+(i===ctCur)+'"><button type="button" class="ct-b" data-ct="'+i+'">فاتورة '+(i+1)+'<small>'+(n ? fmt(n)+' صنف · '+money(round(tot)) : 'فاضية')+'</small></button>'+
+      (ctSlots.length>1 ? '<button type="button" class="ct-x" data-ctx="'+i+'" aria-label="اقفل فاتورة '+(i+1)+'">×</button>' : '')+'</span>';
+  }).join('')+(ctSlots.length<CT_MAX ? '<button type="button" class="ctab add" data-ct="new" aria-label="فاتورة جديدة">+</button>' : '');
+}
+function ctSwitch(i){
+  if(i===ctCur || !ctSlots[i]) return;
+  ctSlots[ctCur] = ctSnap(); ctCur = i; ctLoad(ctSlots[i]); renderAll(); focusQ();
+}
+document.addEventListener('click',function(e){
+  var b = e.target.closest ? e.target.closest('#ctabs [data-ct],#ctabs [data-ctx]') : null; if(!b) return;
+  if(b.dataset.ctx!=null){
+    var x = +b.dataset.ctx, live = x===ctCur ? ctSnap() : ctSlots[x];
+    if(ctItems(live) && !window.confirm('تقفل فاتورة '+(x+1)+' من غير بيع؟ الأصناف اللي فيها هتتمسح.')) return;
+    ctSlots[ctCur] = ctSnap(); ctSlots.splice(x,1);
+    if(!ctSlots.length) ctSlots = [{}];
+    ctCur = x<ctCur ? ctCur-1 : Math.min(ctCur,ctSlots.length-1);
+    if(x===ctCur || true) ctLoad(ctSlots[ctCur]);
+    renderAll(); return;
+  }
+  if(b.dataset.ct==='new'){
+    if(ctSlots.length>=CT_MAX){ toast('أقصى حاجة '+CT_MAX+' فواتير مفتوحة مع بعض',true); return; }
+    ctSlots[ctCur] = ctSnap(); ctSlots.push({}); ctCur = ctSlots.length-1; ctLoad(ctSlots[ctCur]); renderAll(); focusQ(); return;
+  }
+  ctSwitch(+b.dataset.ct);
+});
+/* تغيير العميل أو المدفوع أو التوصيل بيتحفظ في المسودة علطول */
+['#cust','#paid','#fee'].forEach(function(id){ var e = document.querySelector(id); if(e){ e.addEventListener('change',ctSave); e.addEventListener('input',ctSave); } });

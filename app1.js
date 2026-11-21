@@ -277,6 +277,7 @@
   }
 
   function renderSell(){
+    if(typeof cartsBoot==='function') cartsBoot();
     var q = ($('#q').value||'').trim().toLowerCase();
     var list = Array.from(products.values()).filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)>=0 || (p.barcode && String(p.barcode).toLowerCase().indexOf(q)>=0); }).sort(byName);
     var sellTotal = list.length;
@@ -304,6 +305,7 @@
     $('#total').textContent = money(total + (ids.length ? feeVal() : 0));
     $('#checkout').disabled = !ids.length;
     var ls = lastSaleId ? findSale(lastSaleId) : null;
+    if(typeof renderCartTabs==='function') renderCartTabs();
     $('#last-sale').hidden = !ls;
     if(ls){ $('#ls-txt').textContent = 'آخر فاتورة '+invCode(ls)+': '+money(ls.total); $('#last-sale button').setAttribute('data-sid',ls.id); }
   }

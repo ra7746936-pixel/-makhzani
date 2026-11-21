@@ -301,3 +301,11 @@ html.authing #app{display:none}
 .cl-pr{display:inline-flex;align-items:center;gap:4px}
 .cl-pr input{width:76px;padding:2px 6px;min-height:30px;text-align:center}
 .cl-mod{color:var(--warn-ink);font-style:normal;font-weight:600}
+
+.ctabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}
+.ctab{display:inline-flex;align-items:stretch;border:1px solid var(--line,#2c3b36);border-radius:10px;background:transparent;flex:0 0 auto}
+.ctab.on{border-color:var(--accent,#3ad29f);background:var(--ok-bg,rgba(58,210,159,.12))}
+.ctab .ct-b{background:none;border:0;color:inherit;font:inherit;font-weight:600;padding:6px 10px;text-align:center;cursor:pointer;min-height:44px}
+.ctab .ct-b small{display:block;font-size:11px;font-weight:400;opacity:.8}
+.ctab .ct-x{background:none;border:0;border-inline-start:1px solid var(--line,#2c3b36);color:inherit;padding:0 10px;cursor:pointer;min-height:44px}
+.ctab.add{padding:6px 12px;color:inherit;font:inherit;cursor:pointer;min-height:44px;align-items:center}

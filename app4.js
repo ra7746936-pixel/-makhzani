@@ -181,7 +181,7 @@
 
   /* الكمية والسعر في الفاتورة: الضغطة بتحدد الرقم كله (تكتب فوقه علطول)، وEnter بيثبّت ويرجّعك للبحث */
   var selNext = null;
-  $('#cart').addEventListener('focusin',function(e){ var t = e.target; if(t && t.matches && t.matches('[data-qty],[data-price]')){ selNext = t; setTimeout(function(){ try{ t.select(); }catch(x){} },0); } });
+  $('#cart').addEventListener('focusin',function(e){ var t = e.target; if(t && t.matches && t.matches('[data-qty],[data-price]')){ selNext = t; try{ t.select(); }catch(x){} } });
   /* الماوس بيشيل التحديد بعد الفوكس، فبنحدد تاني أول ضغطة بعد الفوكس */
   $('#cart').addEventListener('click',function(e){ var t = e.target; if(t && t===selNext){ selNext = null; try{ t.select(); }catch(x){} } });
   $('#cart').addEventListener('keydown',function(e){
@@ -424,7 +424,7 @@
     customers = new Map(); (pendingRestore.customers||[]).forEach(function(c){ customers.set(c.id,c); });
     expenses = new Map(); (pendingRestore.expenses||[]).forEach(function(x){ expenses.set(x.id,x); });
     selSup = null;
-    cart = {}; cartPrice = {};
+    cart = {}; cartPrice = {}; if(typeof cartsReset==='function') cartsReset();
     if(mode==='cloud') cloudRestoreWrite(pendingRestore,oldIds);
     pendingRestore = null;
     $('#b-confirm').hidden = true;
