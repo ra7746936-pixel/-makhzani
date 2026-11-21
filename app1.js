@@ -18,7 +18,9 @@
   var pendingEntry = null, entryTimer = null, pendingSup = null, supTimer = null;
   var lastOpts = '';
   var sales = [];
-  var cart = {};
+  var cart = {}, cartPrice = {};
+  /* تغيير سعر الصنف وقت البيع: المالك دايما، والكاشير لو المالك سمح */
+  function canPrice(){ return (typeof isOwner==='function' && isOwner()) || shopCfg.cp===true; }
   /* عرض الكمية: كرتونة كاملة تتكتب "1 كرتونة" مش 20 كيس */
   function qtyText(q,pack,u){
     if(u) return fmt(q)+' '+u;
@@ -40,7 +42,7 @@
   var editSale = null, draft = [], pendingCancelInv = false, cancelInvTimer = null, lastIeOpts = '';
   var editEnt = null, lastRtOpts = '';
   var invSeq = 0;
-  var lastSaleId = null, shopCfg = {name:'',foot:'',w:'80',qr:'',qrt:''};
+  var lastSaleId = null, shopCfg = {name:'',foot:'',w:'80',qr:'',qrt:'',cp:false};
 
   /* ---------- حفظ ---------- */
   var LS_KEY = 'makhzani-v1';
@@ -265,6 +267,7 @@
   }
 
   function cleanCart(){
+    Object.keys(cartPrice).forEach(function(id){ var pp = products.get(id); if(!cart[id] || !pp || !(cartPrice[id]>0) || cartPrice[id]===pp.price || !canPrice()) delete cartPrice[id]; });
     Object.keys(cart).forEach(function(id){
       var p = products.get(id);
       if(!p || p.qty<=0){ delete cart[id]; return; }
@@ -287,14 +290,17 @@
 
     cleanCart();
     var ids = Object.keys(cart), total = 0;
-    $('#cart').innerHTML = ids.length ? ids.map(function(id){
-      var p = products.get(id), q2 = cart[id], sub = q2*p.price; total += sub;
-      return '<li class="cline"><div class="cl-name">'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+fmt(p.price)+' × '+fmt(q2)+(p.unit?' '+esc(p.unit):'')+' = '+money(sub)+'</small></div>'+
+    var af = document.activeElement, typing = !!(af && af.matches && af.matches('#cart [data-qty],#cart [data-price]'));
+    /* لو البياع بيكتب كمية أو سعر، مبنعيدش رسم السلة (أي مزامنة بتيجي من جهاز تاني متقطعش كتابته) */
+    var cartHtml = ids.length ? ids.map(function(id){
+      var p = products.get(id), q2 = cart[id], pr = cartPrice[id]!=null ? cartPrice[id] : p.price, sub = round(q2*pr); total += sub;
+      return '<li class="cline"><div class="cl-name">'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+(canPrice() ? '<label class="cl-pr">السعر <input type="number" inputmode="decimal" min="0" step="any" value="'+pr+'" data-price="'+esc(id)+'" aria-label="سعر الوحدة"></label>' : fmt(pr))+' × '+fmt(q2)+(p.unit?' '+esc(p.unit):'')+' = '+money(sub)+(pr!==p.price ? ' <em class="cl-mod">سعر معدّل (الأصلي '+fmt(p.price)+')'+(isOwner() && p.cost!=null && pr<p.cost ? ' · أقل من الجملة!' : '')+'</em>' : '')+'</small></div>'+
         '<div class="step"><button type="button" data-act="dec" data-id="'+esc(id)+'" aria-label="نقّص">−</button>'+
         '<input type="number" inputmode="decimal" min="0" step="any" value="'+q2+'" data-qty="'+esc(id)+'" aria-label="الكمية">'+
         '<button type="button" data-act="inc" data-id="'+esc(id)+'" aria-label="زوّد">+</button></div>'+
         '<button type="button" class="rm" data-act="rm" data-id="'+esc(id)+'" aria-label="شيل من الفاتورة">×</button></li>';
     }).join('') : '<li class="note">اضغط على الأصناف اللي عايز تبيعها.</li>';
+    if(!typing) $('#cart').innerHTML = cartHtml;
     $('#total').textContent = money(total + (ids.length ? feeVal() : 0));
     $('#checkout').disabled = !ids.length;
     var ls = lastSaleId ? findSale(lastSaleId) : null;

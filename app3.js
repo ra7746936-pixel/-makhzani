@@ -3,8 +3,8 @@
   var sec = null, aud = [], audBase = '', audBaseN = 0, sess = null, lastAct = Date.now();
   var approveCb = null, pendingReset = null, auMode = 'login', pendingUserDel = null, userDelTimer = null;
   var countDraft = null, pendingCnt = false, cntTimer = null, audFilter = 'all', audShow = 60, secShown = false;
-  var SENS = {cancel:1,edit:1,delp:1,editp:1,stock:1,fail:1,close:1,cfg:1,user:1,restore:1,count:1,reset:1,delsup:1,entdel:1,entedit:1,approve:1};
-  var ACT_NAME = {login:'دخول',logout:'خروج',fail:'PIN غلط',cancel:'إلغاء فاتورة',edit:'تعديل فاتورة',print:'طباعة',addp:'إضافة صنف',editp:'تعديل صنف',delp:'مسح صنف',stock:'تعديل كمية',restock:'توريد',close:'قفل الدرج',cfg:'إعدادات',user:'حسابات',restore:'استرجاع نسخة',count:'جرد',reset:'فك PIN',sup:'مورد',delsup:'مسح مورد',entdel:'إلغاء حركة مورد',entedit:'تعديل حركة مورد',approve:'موافقة المالك',backup:'نسخة احتياطية',cust:'عميل'};
+  var SENS = {cancel:1,edit:1,delp:1,editp:1,stock:1,fail:1,close:1,cfg:1,user:1,restore:1,count:1,reset:1,delsup:1,entdel:1,entedit:1,approve:1,price:1};
+  var ACT_NAME = {login:'دخول',logout:'خروج',fail:'PIN غلط',cancel:'إلغاء فاتورة',edit:'تعديل فاتورة',print:'طباعة',addp:'إضافة صنف',editp:'تعديل صنف',delp:'مسح صنف',stock:'تعديل كمية',restock:'توريد',close:'قفل الدرج',cfg:'إعدادات',user:'حسابات',restore:'استرجاع نسخة',count:'جرد',reset:'فك PIN',sup:'مورد',delsup:'مسح مورد',entdel:'إلغاء حركة مورد',entedit:'تعديل حركة مورد',approve:'موافقة المالك',backup:'نسخة احتياطية',cust:'عميل',price:'سعر معدّل في البيع'};
   var AUD_GROUPS = {
     sens: null,
     inv: {cancel:1,edit:1,print:1},
@@ -403,6 +403,7 @@
   function fillSecFields(){
     $('#sc-inv').checked = !!sec.cfg.pinInv;
     $('#sc-stock').checked = !!sec.cfg.pinStock;
+    $('#sc-price').checked = shopCfg.cp===true;
     $('#sc-auto').value = String(sec.cfg.autoLock);
     $('#sc-phone').value = sec.cfg.phone || '';
   }
@@ -586,6 +587,13 @@
   }
   $('#sc-inv').addEventListener('change',function(){ saveCfgField('الكاشير يحتاج موافقة المالك للفواتير = '+($('#sc-inv').checked ? 'أيوه' : 'لأ'),function(){ sec.cfg.pinInv = $('#sc-inv').checked; }); });
   $('#sc-stock').addEventListener('change',function(){ saveCfgField('الكاشير يحتاج موافقة المالك للأصناف = '+($('#sc-stock').checked ? 'أيوه' : 'لأ'),function(){ sec.cfg.pinStock = $('#sc-stock').checked; }); });
+  $('#sc-price').addEventListener('change',function(){
+    if(!isOwner()) return;
+    shopCfg.cp = $('#sc-price').checked;
+    try{ localStorage.setItem('makhzani-print',JSON.stringify(shopCfg)); }catch(e){}
+    if(mode==='cloud' && db) db.doc('meta/print').set(shopCfg);
+    logA('cfg','غيّر إعداد: الكاشير يغيّر السعر وقت البيع = '+(shopCfg.cp ? 'أيوه' : 'لأ')); toast('اتحفظ الإعداد'); render();
+  });
   $('#sc-auto').addEventListener('change',function(){ saveCfgField('القفل التلقائي = '+$('#sc-auto').value+' دقيقة',function(){ sec.cfg.autoLock = +$('#sc-auto').value; }); });
   $('#sc-phone').addEventListener('change',function(){ saveCfgField('رقم واتساب المالك',function(){ sec.cfg.phone = $('#sc-phone').value.replace(/\D/g,''); }); });
 

@@ -310,7 +310,7 @@
     var qr = $('#ps-qr').value.trim();
     if(qr && !/^[a-z][a-z0-9+.-]*:/i.test(qr)) qr = 'https://'+qr.replace(/^\/+/,'');
     if(qr && (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(qr) || !qrSvg(qr))){ toast(qrSvg(qr)==='' && qr.length>150 ? 'اللينك طويل أوي للكيو ار كود' : 'اللينك مش مظبوط، اكتبه زي facebook.com/اسم-الصفحة',true); qr = ''; $('#ps-qr').value = ''; }
-    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80',qr:qr,qrt:$('#ps-qrt').value.trim()};
+    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80',qr:qr,qrt:$('#ps-qrt').value.trim(),cp:shopCfg.cp===true};
     try{ localStorage.setItem('makhzani-print',JSON.stringify(shopCfg)); }catch(e){}
     if(mode==='cloud' && db) db.doc('meta/print').set(shopCfg);
     toast('اتحفظت بيانات الفاتورة');
@@ -444,14 +444,15 @@
   /* ---------- البيع ---------- */
   function confirmSale(){
     if(!ready()) return;
-    var lines = [], updated = [], total = 0, bad = null;
+    var lines = [], updated = [], total = 0, bad = null, chgP = [];
     Object.keys(cart).forEach(function(pid){
       var p = products.get(pid), q = cart[pid];
       if(!p || !(q>0)) return;
       if(q>p.qty){ bad = p; return; }
-      var ln = {pid:pid,name:p.name,qty:q,price:p.price,cost:(p.cost==null?null:p.cost)}; if(p.pack>1) ln.pack = p.pack; if(p.unit) ln.u = p.unit; lines.push(ln);
-      total += q*p.price;
-      updated.push(Object.assign({},p,{qty:round(p.qty-q),sold:round((p.sold||0)+q),revenue:round((p.revenue||0)+q*p.price)}));
+      var pr = cartPrice[pid]!=null && canPrice() ? cartPrice[pid] : p.price;
+      var ln = {pid:pid,name:p.name,qty:q,price:pr,cost:(p.cost==null?null:p.cost)}; if(pr!==p.price){ ln.op = p.price; chgP.push(p.name+' '+fmt(p.price)+'←'+fmt(pr)); } if(p.pack>1) ln.pack = p.pack; if(p.unit) ln.u = p.unit; lines.push(ln);
+      total += q*pr;
+      updated.push(Object.assign({},p,{qty:round(p.qty-q),sold:round((p.sold||0)+q),revenue:round((p.revenue||0)+q*pr)}));
     });
     if(bad){ toast('المتاح من '+bad.name+' '+fmt(bad.qty)+' بس',true); return; }
     if(!lines.length) return;
@@ -470,7 +471,7 @@
     $('#cust').value = ''; if($('#cust-q')) $('#cust-q').value = ''; if(typeof renderCustSel==='function') renderCustSel();
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
-    cart = {};
+    cart = {}; cartPrice = {};
     if(mode==='cloud'){
       /* رقم الفاتورة من عدّاد المحل كله. لو مفيش نت بنكمل برقم مؤقت من أكبر رقم الجهاز شايفه */
       var floor = invSeq;
@@ -480,6 +481,7 @@
         sale.no = no; if(no>invSeq) invSeq = no;
         lastSaleId = sale.id;
         recordSale(sale,updated); creditEntry(sale);
+        if(chgP.length) logA('price','غيّر سعر وقت البيع (فاتورة '+invCode(sale)+'): '+chgP.join('، '),{id:sale.id});
         toast('تم البيع: '+money(total)+(sale.paid!=null ? ' · على العميل '+money(round(sale.total-sale.paid)) : ''));
         focusQ();
       };
@@ -490,6 +492,7 @@
     sale.no = ++invSeq;
     lastSaleId = sale.id;
     recordSale(sale,updated); creditEntry(sale);
+    if(chgP.length) logA('price','غيّر سعر وقت البيع (فاتورة '+invCode(sale)+'): '+chgP.join('، '),{id:sale.id});
     toast('تم البيع: '+money(total)+(sale.paid!=null ? ' · على العميل '+money(round(sale.total-sale.paid)) : ''));
     focusQ();
   }

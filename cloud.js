@@ -1,4 +1,4 @@
-window.APP_VER = 'v29';
+window.APP_VER = 'v30';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -170,7 +170,7 @@ function cloudDataStart(shopId){
     sec = {v:1,owner:null,users:[],cfg:{pinInv:true,pinStock:true,autoLock:0,phone:''},used:[]};
     db.watch('meta/print',function(s){
       var pc = s.exists() ? s.data() : null;
-      shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''} : {name:'',foot:'',w:'80',qr:'',qrt:''};
+      shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true} : {name:'',foot:'',w:'80',qr:'',qrt:'',cp:false};
     },function(){});
   } else {
   /* المصروفات: للمالك بس */
@@ -195,7 +195,7 @@ function cloudDataStart(shopId){
     snap.docs.forEach(function(d){
       if(d.id==='sec'){ try{ cd = JSON.parse(d.data().data); }catch(e){} }
       if(d.id==='backup'){ cloudLastBackup = +d.data().ts || 0; try{ renderBackup(); }catch(e){} }
-      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||''}; cloudPrintFill(); }
+      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true}; cloudPrintFill(); }
     });
     cloudSecSync(cd,shopId,!fc);
     if(!metaOk && (!fc || cd)){ metaOk = true; clearTimeout(metaTimer); got('m'); }
@@ -433,7 +433,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=29').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=30').catch(function(){}); });
   }
 }catch(e){}
 

@@ -179,7 +179,26 @@
   ['#ps-name','#ps-foot','#ps-w','#ps-qr','#ps-qrt'].forEach(function(id){ $(id).addEventListener('change',saveShopCfg); });
   $('#f-cancel').addEventListener('click',resetForm);
 
+  /* الكمية والسعر في الفاتورة: الضغطة بتحدد الرقم كله (تكتب فوقه علطول)، وEnter بيثبّت ويرجّعك للبحث */
+  var selNext = null;
+  $('#cart').addEventListener('focusin',function(e){ var t = e.target; if(t && t.matches && t.matches('[data-qty],[data-price]')){ selNext = t; setTimeout(function(){ try{ t.select(); }catch(x){} },0); } });
+  /* الماوس بيشيل التحديد بعد الفوكس، فبنحدد تاني أول ضغطة بعد الفوكس */
+  $('#cart').addEventListener('click',function(e){ var t = e.target; if(t && t===selNext){ selNext = null; try{ t.select(); }catch(x){} } });
+  $('#cart').addEventListener('keydown',function(e){
+    var t = e.target; if(e.key!=='Enter' || !t || !t.matches || !t.matches('[data-qty],[data-price]')) return;
+    e.preventDefault(); t.blur(); focusQ();
+  });
   $('#cart').addEventListener('change',function(e){
+    try{ if(document.activeElement===e.target) e.target.blur(); }catch(x){}
+    var pin = e.target.closest('[data-price]');
+    if(pin){
+      var pid = pin.dataset.price, pp = products.get(pid), pv = parseFloat(pin.value);
+      if(!pp || !canPrice()) return;
+      if(!(pv>0)){ delete cartPrice[pid]; toast('السعر لازم يكون أكبر من صفر. رجّعنا السعر الأصلي',true); }
+      else if(round(pv)===pp.price) delete cartPrice[pid];
+      else cartPrice[pid] = round(pv);
+      renderSell(); return;
+    }
     var inp = e.target.closest('[data-qty]');
     if(!inp) return;
     var id = inp.dataset.qty, p = products.get(id), v = parseFloat(inp.value);
@@ -405,7 +424,7 @@
     customers = new Map(); (pendingRestore.customers||[]).forEach(function(c){ customers.set(c.id,c); });
     expenses = new Map(); (pendingRestore.expenses||[]).forEach(function(x){ expenses.set(x.id,x); });
     selSup = null;
-    cart = {}; 
+    cart = {}; cartPrice = {};
     if(mode==='cloud') cloudRestoreWrite(pendingRestore,oldIds);
     pendingRestore = null;
     $('#b-confirm').hidden = true;
