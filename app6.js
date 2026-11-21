@@ -264,3 +264,32 @@ document.addEventListener('click',function(e){
 
 /* بحث قايمة الموردين */
 (function(){ var e = document.querySelector('#su-q'); if(e) e.addEventListener('input',function(){ renderSup(); }); })();
+
+/* بحث اختيار الصنف في «بضاعة جديدة من المورد» و«مرتجع للمورد».
+   الكتابة بتفلتر القايمة، Enter بيختار أول نتيجة، واختيار الصنف بيمسح البحث وينقلك للكمية، وزرار × بيمسح الكتابة. */
+(function(){
+  [['pu','#pu-qty'],['rt','#rt-qty']].forEach(function(cfg){
+    var q = document.querySelector('#'+cfg[0]+'-q'), sel = document.querySelector('#'+cfg[0]+'-prod'), x = document.querySelector('[data-qx="'+cfg[0]+'-q"]');
+    if(!q || !sel || !x) return;
+    function sync(){ x.hidden = !q.value; }
+    q.addEventListener('input',function(){ sync(); renderSup(); });
+    x.addEventListener('click',function(){ q.value = ''; sync(); renderSup(); q.focus(); });
+    sel.addEventListener('change',function(){
+      if(!q.value) return;
+      q.value = ''; sync(); renderSup();
+      if(sel.value && sel.value!=='__new') setTimeout(function(){ var n = document.querySelector(cfg[1]); if(n) n.focus(); },0);
+    });
+    q.addEventListener('keydown',function(e){
+      if(e.key!=='Enter') return;
+      e.preventDefault();
+      var qq = q.value.trim().toLowerCase();
+      var first = Array.prototype.filter.call(sel.options,function(o){
+        var pp = o.value && o.value!=='__new' ? products.get(o.value) : null;
+        return pp && (pp.name.toLowerCase().indexOf(qq)>=0 || (pp.barcode && String(pp.barcode).toLowerCase().indexOf(qq)>=0));
+      })[0];
+      if(!first){ toast('مفيش صنف بالاسم ده',true); return; }
+      sel.value = first.value; sel.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    var f = q.form; if(f) f.addEventListener('reset',function(){ setTimeout(function(){ sync(); renderSup(); },0); });
+  });
+})();

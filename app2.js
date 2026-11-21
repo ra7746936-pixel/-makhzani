@@ -168,8 +168,10 @@
       '<div class="tile"><span>'+(st.bal<0?'هيدفعلنا':'إحنا هندفعله')+(lnS!==null?' (كمورد بس)':'')+'</span><strong>'+money(Math.abs(st.bal))+'</strong></div>'+
       (lnS!==null?'<div class="tile"><span>'+(lnS<0?'الصافي: هيدفعلنا':lnS>0?'الصافي: إحنا هندفعله':'الصافي')+'</span><strong>'+(lnS===0?'متسوّي':money(Math.abs(lnS)))+'</strong><small>بعد خصم حسابه كعميل</small></div>':'');
 
-    var opts = '<option value="">اختار الصنف…</option>'+
-      Array.from(products.values()).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'; }).join('')+
+    var puq = (($('#pu-q')||{}).value||'').trim().toLowerCase(), puCur = $('#pu-prod').value;
+    function pfilt(p,q,keep){ return !q || p.id===keep || p.name.toLowerCase().indexOf(q)>=0 || (p.barcode && String(p.barcode).toLowerCase().indexOf(q)>=0); }
+    var opts = '<option value="">'+(puq ? 'اختار من النتايج…' : 'اختار الصنف…')+'</option>'+
+      Array.from(products.values()).filter(function(p){ return pfilt(p,puq,puCur); }).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'; }).join('')+
       '<option value="__new">+ صنف جديد</option>';
     if(opts!==lastOpts){
       var sel = $('#pu-prod'), cur = sel.value;
@@ -177,15 +179,19 @@
       if(cur) sel.value = cur;
       lastOpts = opts;
     }
+    /* وقت البحث القايمة بتتعرض مفتوحة (لحد 8 نتايج) عشان يختار بضغطة */
+    $('#pu-prod').size = puq ? Math.min(8,$('#pu-prod').options.length) : 1;
     $('#pu-new').hidden = ($('#pu-prod').value!=='__new');
-    var ropts = '<option value="">اختار الصنف…</option>'+
-      Array.from(products.values()).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+' (فاضل '+fmt(p.qty)+')</option>'; }).join('');
+    var rtq = (($('#rt-q')||{}).value||'').trim().toLowerCase(), rtCur = $('#rt-prod').value;
+    var ropts = '<option value="">'+(rtq ? 'اختار من النتايج…' : 'اختار الصنف…')+'</option>'+
+      Array.from(products.values()).filter(function(p){ return pfilt(p,rtq,rtCur); }).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+' (فاضل '+fmt(p.qty)+')</option>'; }).join('');
     if(ropts!==lastRtOpts){
       var rsel = $('#rt-prod'), rcur = rsel.value;
       rsel.innerHTML = ropts;
       if(rcur) rsel.value = rcur;
       lastRtOpts = ropts;
     }
+    $('#rt-prod').size = rtq ? Math.min(8,$('#rt-prod').options.length) : 1;
     renderEntEdit(s);
 
     var entries = s.entries||[];

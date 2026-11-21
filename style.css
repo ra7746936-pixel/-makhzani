@@ -309,3 +309,10 @@ html.authing #app{display:none}
 .ctab .ct-b small{display:block;font-size:11px;font-weight:400;opacity:.8}
 .ctab .ct-x{background:none;border:0;border-inline-start:1px solid var(--line,#2c3b36);color:inherit;padding:0 10px;cursor:pointer;min-height:44px}
 .ctab.add{padding:6px 12px;color:inherit;font:inherit;cursor:pointer;min-height:44px;align-items:center}
+
+.qwrap{position:relative;margin-bottom:6px}
+.qwrap input{width:100%;padding-inline-end:44px}
+.qwrap input::-webkit-search-cancel-button{display:none}
+.qx{position:absolute;inset-inline-end:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:8px;background:transparent;color:inherit;font-size:22px;line-height:1;cursor:pointer}
+.qx:hover{background:var(--surface2,rgba(127,127,127,.15))}
+select[size]:not([size="1"]){width:100%;min-height:120px}
