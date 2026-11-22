@@ -3,18 +3,18 @@
    الفتح من ملف على الجهاز (file://) أو بإضافة ?local للرابط = الوضع المحلي القديم من غير سحابة. */
 (function(){
   var CFG = {
-    apiKey: "AIzaSyAHwzKb29Tg9Ba2VrETUFrPuc5mVvdztDw",
-    authDomain: "auto-parts-e19d1.firebaseapp.com",
-    projectId: "auto-parts-e19d1",
-    storageBucket: "auto-parts-e19d1.firebasestorage.app",
-    messagingSenderId: "275962438391",
-    appId: "1:275962438391:web:ee0976446573e83c93a9f2"
+    apiKey: "AIzaSyBHHvaYyh4Z_lhpD2TNW9D_48eO-IAIyzg",
+    authDomain: "makhzani-16e1e.firebaseapp.com",
+    projectId: "makhzani-16e1e",
+    storageBucket: "makhzani-16e1e.firebasestorage.app",
+    messagingSenderId: "24820958119",
+    appId: "1:24820958119:web:c7f9107875f0694848ec82"
   };
   var SDK_VERSION = '13.2.0';
   window.FB_CONFIG = CFG;
   window.APP_VER = 'v3';
   window.FB_PEND = 0;
-  window.FB_ADMIN_UID = 'WJHiOYM1OFfeUhqR9JvmMNW38SC2';
+  window.FB_ADMIN_UID = 'dqK2AqfNGIMSlQ6UkWcLPxC32Uh1';
 
   function fire(n){ try{ window.dispatchEvent(new Event(n)); }catch(e){} }
 

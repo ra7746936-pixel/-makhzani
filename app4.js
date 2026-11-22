@@ -184,6 +184,9 @@
   $('#cart').addEventListener('focusin',function(e){ var t = e.target; if(t && t.matches && t.matches('[data-qty],[data-price]')){ selNext = t; try{ t.select(); }catch(x){} } });
   /* الماوس بيشيل التحديد بعد الفوكس، فبنحدد تاني أول ضغطة بعد الفوكس */
   $('#cart').addEventListener('click',function(e){ var t = e.target; if(t && t===selNext){ selNext = null; try{ t.select(); }catch(x){} } });
+  /* بعض المتصفحات (خصوصا القديمة) بتشيل التحديد لما الماوس/اللمس يخلص بعد الفوكس. بنمنع ده عشان الرقم يفضل متحدد وأول حرف تكتبه يكتب فوقه */
+  var selUp = function(e){ var t = e.target; if(t && t===selNext && t.matches && t.matches('[data-qty],[data-price]')){ e.preventDefault(); try{ t.select(); }catch(x){} } };
+  $('#cart').addEventListener('mouseup',selUp); $('#cart').addEventListener('touchend',selUp);
   $('#cart').addEventListener('keydown',function(e){
     var t = e.target; if(e.key!=='Enter' || !t || !t.matches || !t.matches('[data-qty],[data-price]')) return;
     e.preventDefault(); t.blur(); focusQ();
@@ -196,6 +199,7 @@
       if(!pp || !canPrice()) return;
       if(!(pv>0)){ delete cartPrice[pid]; toast('السعر لازم يكون أكبر من صفر. رجّعنا السعر الأصلي',true); }
       else if(round(pv)===pp.price) delete cartPrice[pid];
+      else if((pv>=pp.price*5 || pv<=pp.price/5) && !window.confirm('السعر الأصلي '+fmt(pp.price)+' وانت كتبت '+fmt(round(pv))+'. الفرق كبير، ممكن يكون خطأ في الكتابة. تكمل بالسعر الجديد؟')){ delete cartPrice[pid]; }
       else cartPrice[pid] = round(pv);
       renderSell(); return;
     }
@@ -308,6 +312,22 @@
   $('#pu-qty').addEventListener('input',updatePuTotal);
   $('#pu-cost').addEventListener('input',updatePuTotal);
 
+  /* فاتورة الشراء: أصناف كتير في قايمة وتتسجل مرة واحدة. المسودة محفوظة لكل مورد في الذاكرة (بتضيع لو قفلت الصفحة). */
+  var puDraft = {};
+  function puLines(){ return puDraft[selSup] || (puDraft[selSup] = []); }
+  function renderPuBasket(){
+    var L = selSup ? puLines() : [], tot = 0;
+    L.forEach(function(l){ tot += l.qty*l.cost; });
+    $('#pu-basket').hidden = !L.length;
+    $('#pu-bn').textContent = L.length;
+    $('#pu-lines').innerHTML = L.map(function(l,i){
+      return '<li class="item"><div class="item-head"><strong>'+esc(l.name)+(l.isNew ? ' <span class="pill warn">صنف جديد</span>' : '')+'</strong><span>'+money(round(l.qty*l.cost))+'</span></div>'+
+        '<div class="meta">'+fmt(l.qty)+' × '+money(l.cost)+' للوحدة'+(l.isNew ? ' · سعر البيع '+money(l.price) : '')+'</div>'+
+        '<div class="actions"><button class="btn sm" type="button" data-pux="'+i+'">شيل</button></div></li>';
+    }).join('');
+    $('#pu-btotal').textContent = 'إجمالي الفاتورة: '+money(round(tot));
+  }
+  window.renderPuBasket = renderPuBasket;
   $('#pu-form').addEventListener('submit',function(e){
     e.preventDefault();
     if(!ready()) return;
@@ -315,28 +335,59 @@
     if(!s) return;
     var val = $('#pu-prod').value;
     var qty = parseFloat($('#pu-qty').value), cost = parseFloat($('#pu-cost').value);
-    var paidRaw = $('#pu-paid').value, paid = paidRaw==='' ? 0 : parseFloat(paidRaw);
     if(!val){ toast('اختار الصنف',true); $('#pu-prod').focus(); return; }
-    var base;
+    var line;
     if(val==='__new'){
       var nm = $('#pu-newname').value.trim(), pr = parseFloat($('#pu-newprice').value);
       if(!nm){ toast('اكتب اسم الصنف الجديد',true); $('#pu-newname').focus(); return; }
       if(!(pr>=0)){ toast('اكتب سعر البيع للزبون',true); $('#pu-newprice').focus(); return; }
-      base = {id:uid(),name:nm,price:round(pr),qty:0,sold:0,revenue:0,cost:null,created:Date.now()};
+      line = {pid:uid(),isNew:true,name:nm,price:round(pr)};
     } else {
-      base = products.get(val);
+      var base = products.get(val);
       if(!base){ toast('الصنف مش موجود',true); return; }
+      line = {pid:base.id,isNew:false,name:base.name};
     }
     if(!(qty>0)){ toast('اكتب الكمية',true); $('#pu-qty').focus(); return; }
     if(!(cost>=0)){ toast('اكتب سعر الجملة',true); $('#pu-cost').focus(); return; }
-    if(!(paid>=0)){ toast('المبلغ المدفوع غلط',true); $('#pu-paid').focus(); return; }
-    var p = Object.assign({},base,{qty:round(base.qty+qty),cost:round(cost)});
-    var entry = {id:uid(),type:'purchase',ts:Date.now(),pid:p.id,name:p.name,qty:round(qty),cost:round(cost),total:round(qty*cost),paid:round(paid)};
-    logA('sup','بضاعة من '+s.name+': '+p.name+' ×'+fmt(entry.qty)+' بسعر '+money(entry.cost)+' (دفعت '+money(entry.paid)+')');
-    commit([p],Object.assign({},s,{entries:[entry].concat(s.entries||[])}));
+    line.qty = round(qty); line.cost = round(cost);
+    puLines().push(line);
     $('#pu-form').reset();
-    updatePuTotal(); renderSup();
-    toast('اتسجلت البضاعة وزادت في المخزن');
+    updatePuTotal(); renderPuBasket(); renderSup();
+    var q = $('#pu-q'); if(q) q.focus();
+  });
+  $('#pu-lines').addEventListener('click',function(e){
+    var b = e.target.closest('[data-pux]'); if(!b) return;
+    puLines().splice(+b.dataset.pux,1); renderPuBasket();
+  });
+  $('#pu-clear').addEventListener('click',function(){
+    if(!puLines().length) return;
+    if(!window.confirm('تفضّي الفاتورة من غير تسجيل؟')) return;
+    puDraft[selSup] = []; $('#pu-paid').value = ''; renderPuBasket();
+  });
+  $('#pu-save').addEventListener('click',function(){
+    if(!ready()) return;
+    var s = suppliers.get(selSup), L = s ? puLines() : [];
+    if(!s || !L.length) return;
+    var paidRaw = $('#pu-paid').value, paid = paidRaw==='' ? 0 : parseFloat(paidRaw);
+    if(!(paid>=0)){ toast('المبلغ المدفوع غلط',true); $('#pu-paid').focus(); return; }
+    var work = {}, order = [], entries = [], now = Date.now(), grp = uid(), grand = 0, i;
+    for(i=0;i<L.length;i++){
+      var l = L[i], base = work[l.pid] || (l.isNew ? {id:l.pid,name:l.name,price:l.price,qty:0,sold:0,revenue:0,cost:null,created:now} : products.get(l.pid));
+      if(!base){ toast('الصنف "'+l.name+'" اتمسح من المخزن. شيله من الفاتورة',true); return; }
+      if(!work[l.pid]) order.push(l.pid);
+      work[l.pid] = Object.assign({},base,{qty:round(base.qty+l.qty),cost:l.cost});
+      var tl = round(l.qty*l.cost); grand += tl;
+      entries.push({id:uid(),type:'purchase',ts:now,pid:l.pid,name:l.name,qty:l.qty,cost:l.cost,total:tl,paid:0,grp:grp});
+    }
+    grand = round(grand);
+    if(paid>grand){ toast('المدفوع ('+money(round(paid))+') أكبر من إجمالي الفاتورة ('+money(grand)+')',true); $('#pu-paid').focus(); return; }
+    /* المدفوع بيتسجل دفعة واحدة للفاتورة كلها، فرصيد المورد بيطلع صح من غير ما نوزّع المبلغ على الأصناف */
+    if(paid>0) entries.push({id:uid(),type:'payment',ts:now,amount:round(paid),note:'مدفوع مع فاتورة شراء ('+L.length+' صنف)',grp:grp});
+    logA('sup','فاتورة شراء من '+s.name+': '+L.length+' صنف بإجمالي '+money(grand)+' (دفعت '+money(round(paid))+'): '+L.slice(0,8).map(function(l){ return l.name+' ×'+fmt(l.qty); }).join('، ')+(L.length>8 ? '…' : ''));
+    commit(order.map(function(id){ return work[id]; }),Object.assign({},s,{entries:entries.slice().reverse().concat(s.entries||[])}));
+    puDraft[selSup] = []; $('#pu-paid').value = '';
+    updatePuTotal(); renderPuBasket(); renderSup();
+    toast('اتسجلت فاتورة الشراء ('+L.length+' صنف) وزادت في المخزن');
   });
 
   $('#ee-qty').addEventListener('input',updateEeSum);
@@ -563,7 +614,7 @@
     var blob = buildExcelBlob(sales), url = URL.createObjectURL(blob), d = new Date();
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'qatea-excel-'+d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'.xlsx';
+    a.download = 'makhzani-excel-'+d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'.xlsx';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); },1000);
     try{ localStorage.setItem(BK_KEY,String(Date.now())); }catch(e){}
@@ -574,7 +625,7 @@
   }
 
   /* ---------- الترخيص ---------- */
-  var LIC_KEY = 'qatea-license', SEEN_KEY = 'qatea-seen', DEV_KEY = 'qatea-device';
+  var LIC_KEY = 'makhzani-license', SEEN_KEY = 'makhzani-seen', DEV_KEY = 'makhzani-device';
 
   function getDeviceId(){
     var id = null;
