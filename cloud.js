@@ -1,10 +1,11 @@
-window.APP_VER = 'v36';
+window.APP_VER = 'v41';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
    الدخول بإيميل وباسورد مرة واحدة على الجهاز، والاشتراك بيتقرا من السيرفر ويتجدد من لوحة الإدارة. */
 var CLOUD_KEY = 'makhzani-cloud';
 var CLOUD_STALE_MS = 7*86400000;
+var LOC = 'main';
 var cloudInfo = null, cloudInited = false, cloudDone = false;
 
 function cloudLoadCache(){
@@ -76,7 +77,7 @@ function cloudVerify(u){
     if(us.disabled===true) return {err:'disabled'};
     return FB.get('shops/'+us.shopId).then(function(sh){
       if(!sh) return {err:'noshop'};
-      return {info:{uid:u.uid,email:u.email,shopId:us.shopId,name:sh.name||'',exp:+sh.expiresAt||0,status:sh.status||'active',checked:Date.now(),role:us.role||'owner',uname:us.name||''}};
+      return {info:{uid:u.uid,email:u.email,shopId:us.shopId,name:sh.name||'',exp:+sh.expiresAt||0,status:sh.status||'active',checked:Date.now(),role:us.role||'owner',uname:us.name||'',loc:us.loc||'main'}};
     });
   }).then(function(r){
     if(r.err==='disabled'){ cloudShow('blocked','الحساب موقوف','المالك أوقف الحساب ده. كلّمه.'); return; }
@@ -134,6 +135,7 @@ function cloudDataStart(shopId){
   }
   cloudStarted = true;
   var cashier = !!(cloudInfo && cloudInfo.role==='cashier');
+  LOC = (cashier && cloudInfo.loc) || 'main';
   db = FB.shopDb(shopId);
   mode = 'pending';
   products = new Map(); sales = []; suppliers = new Map(); customers = new Map(); expenses = new Map();
@@ -149,7 +151,7 @@ function cloudDataStart(shopId){
   };
   db.collection('products').onSnapshot(function(snap){
     var m = new Map();
-    snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
+    snap.docs.forEach(function(d){ var v = d.data(); if(v){ v = Object.assign({},v,{id:d.id}); if(LOC!=='main'){ v.mq = v.qty; v.qty = +(v.stk && v.stk[LOC]) || 0; } m.set(d.id,v); } });
     products = m; cloudMeta('p',snap); got('p');
   },fail);
   db.collection('sales').where('ts','>=',Date.now()-CLOUD_DAYS*86400000).orderBy('ts','desc').limit(1500).onSnapshot(function(snap){
@@ -164,13 +166,14 @@ function cloudDataStart(shopId){
     snap.docs.forEach(function(d){ var v = d.data(); if(v) m.set(d.id,Object.assign({},v,{id:d.id})); });
     customers = m; render();
   },function(){});
+  if(typeof locStart==='function') locStart(cashier);
   if(cashier){
     /* الكاشير: مفيش موردين ولا سجل أمان ولا إعدادات حماية. بيقرا بيانات الفاتورة المطبوعة بس */
     cloudGot.u = true; cloudGot.m = true;
     sec = {v:1,owner:null,users:[],cfg:{pinInv:true,pinStock:true,autoLock:0,phone:''},used:[]};
     db.watch('meta/print',function(s){
       var pc = s.exists() ? s.data() : null;
-      shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true} : {name:'',foot:'',w:'80',qr:'',qrt:'',cp:false};
+      shopCfg = pc ? {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true,locs:Array.isArray(pc.locs)?pc.locs:[]} : {name:'',foot:'',w:'80',qr:'',qrt:'',cp:false,locs:[]};
       render();
     },function(){});
   } else {
@@ -196,7 +199,7 @@ function cloudDataStart(shopId){
     snap.docs.forEach(function(d){
       if(d.id==='sec'){ try{ cd = JSON.parse(d.data().data); }catch(e){} }
       if(d.id==='backup'){ cloudLastBackup = +d.data().ts || 0; try{ renderBackup(); }catch(e){} }
-      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true}; cloudPrintFill(); }
+      if(d.id==='print'){ var pc = d.data(); shopCfg = {name:pc.name||'',foot:pc.foot||'',w:pc.w==='58' ? '58' : '80',qr:pc.qr||'',qrt:pc.qrt||'',cp:pc.cp===true,locs:Array.isArray(pc.locs)?pc.locs:[]}; cloudPrintFill(); if(typeof renderLocs==='function') render(); }
     });
     cloudSecSync(cd,shopId,!fc);
     if(!metaOk && (!fc || cd)){ metaOk = true; clearTimeout(metaTimer); got('m'); }
@@ -434,7 +437,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=36').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=41').catch(function(){}); });
     /* لما تنزل نسخة جديدة: البرنامج بيعيد تحميل نفسه لوحده لو مفيش فاتورة مفتوحة، ولو فيه بيقولك تفتحه تاني بعد الفاتورة */
     var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
@@ -463,7 +466,7 @@ function renderCloudCashiers(){
   var l = cloudCashiers.slice().sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
   $('#cc-list').innerHTML = l.length ? l.map(function(u){
     return '<li class="item"><div class="item-head"><strong>'+esc(u.name)+'</strong>'+(u.disabled ? '<span class="chip local">موقوف</span>' : '<span class="chip db">شغال</span>')+'</div>'+
-      '<div class="meta">اسم الدخول: <b dir="ltr">'+esc(u.username)+'</b></div>'+
+      '<div class="meta">اسم الدخول: <b dir="ltr">'+esc(u.username)+'</b>'+(u.loc && u.loc!=='main' ? ' · الموقع: <b>'+esc(locName(u.loc))+'</b>' : '')+'</div>'+
       '<div class="actions"><button class="btn" type="button" data-cc="'+esc(u.id)+'">'+(u.disabled ? 'فعّل' : 'وقّف')+'</button></div></li>';
   }).join('') : '<li class="empty"><p>لسه مفيش كاشيرين. ضيف أول كاشير من تحت.</p></li>';
 }
@@ -479,6 +482,7 @@ $('#cc-form').addEventListener('submit',function(e){
   btn.disabled = true;
   FB.createUser(email,pw).then(function(uid){
     var prof = {shopId:cloudInfo.shopId,role:'cashier',name:name,username:login,email:email,disabled:false,createdAt:Date.now()};
+    var lsel = $('#cc-loc'); if(lsel && lsel.value && lsel.value!=='main') prof.loc = lsel.value;
     return FB.set('users/'+uid,prof).then(function(){
       return FB.set('shops/'+cloudInfo.shopId+'/staff/'+uid,{name:name,username:login,disabled:false,createdAt:prof.createdAt});
     }).then(function(){

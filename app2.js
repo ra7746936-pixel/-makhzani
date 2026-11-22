@@ -8,6 +8,7 @@
   function openInvEdit(sid){
     var s = findSale(sid);
     if(!s) return;
+    if(s.loc && s.loc!==LOC){ toast('الفاتورة دي اتباعت من عربية ('+locName(s.loc)+'). المرتجع والتعديل بيتعملوا من حساب السواق بتاع العربية دي عشان المخزون يرجع لمكانه الصح.',true); return; }
     editSale = sid; pendingCancelInv = false; $('#ie-fee').value = s.fee>0 ? s.fee : '';
     draft = s.lines.map(function(l){ return {pid:l.pid,name:l.name,price:l.price,cost:(l.cost==null?null:l.cost),pack:(l.pack>1?l.pack:0),qty:l.qty,orig:l.qty}; });
     render();
@@ -182,6 +183,7 @@
     /* وقت البحث القايمة بتتعرض مفتوحة (لحد 8 نتايج) عشان يختار بضغطة */
     $('#pu-prod').size = puq ? Math.min(8,$('#pu-prod').options.length) : 1;
     $('#pu-new').hidden = ($('#pu-prod').value!=='__new');
+    if(typeof renderPuBasket==='function') renderPuBasket();
     var rtq = (($('#rt-q')||{}).value||'').trim().toLowerCase(), rtCur = $('#rt-prod').value;
     var ropts = '<option value="">'+(rtq ? 'اختار من النتايج…' : 'اختار الصنف…')+'</option>'+
       Array.from(products.values()).filter(function(p){ return pfilt(p,rtq,rtCur); }).sort(byName).map(function(p){ return '<option value="'+esc(p.id)+'">'+esc(p.name)+' (فاضل '+fmt(p.qty)+')</option>'; }).join('');
@@ -195,29 +197,39 @@
     renderEntEdit(s);
 
     var entries = s.entries||[];
+    /* فواتير الشراء (أصناف كتير مع بعض): كل فاتورة ليها عنوان فاصل برقمها وإجماليها، وتحتها أصنافها */
+    var grpNo = {}, gn = 0, gi, gsum = {};
+    for(gi = entries.length-1; gi>=0; gi--){ var gg = entries[gi].grp; if(gg){ if(!grpNo[gg]) grpNo[gg] = ++gn; var o = gsum[gg] || (gsum[gg] = {n:0,buy:0,paid:0,ts:entries[gi].ts}); if(entries[gi].type==='purchase'){ o.n++; o.buy += entries[gi].total; o.paid += (entries[gi].paid||0); } else if(entries[gi].type==='payment') o.paid += entries[gi].amount; } }
+    var lastGrp = null;
     $('#sd-ledger').innerHTML = entries.length ? entries.map(function(e){
+      var head = '';
+      if(e.grp && e.grp!==lastGrp){
+        var g = gsum[e.grp], rest = round(g.buy-g.paid);
+        head = '<li class="lg-head"><strong>فاتورة شراء #'+grpNo[e.grp]+'</strong><span>'+fmt(g.n)+' صنف · إجمالي '+money(round(g.buy))+' · مدفوع '+money(round(g.paid))+(rest>0 ? ' · متبقي '+money(rest) : '')+'</span><span class="when">'+dt(g.ts)+'</span></li>';
+      }
+      lastGrp = e.grp || null;
       var del = pendingEntry===e.id;
       var btn = '<div class="lg-btns"><button type="button" class="btn sm" data-act="editent" data-eid="'+esc(e.id)+'">تعديل</button>'+
         '<button type="button" class="btn danger sm" data-act="delentry" data-eid="'+esc(e.id)+'">'+(del?'متأكد؟ اضغط تاني':'إلغاء')+'</button></div>';
       var tag = e.edited ? ' <span class="pill warn">اتعدّلت</span>' : '';
       if(e.type==='purchase'){
-        return '<li class="ledger-row"><div class="lg-main"><strong>بضاعة: '+esc(e.name)+' × '+fmt(e.qty)+tag+'</strong>'+
-          '<span class="pmeta">سعر الوحدة '+money(e.cost)+' = '+money(e.total)+' · دفعت '+money(e.paid)+'</span>'+
-          '<span class="when">'+dt(e.ts)+'</span></div>'+btn+'</li>';
+        return head+'<li class="ledger-row'+(e.grp ? ' in-grp' : '')+'"><div class="lg-main"><strong>بضاعة: '+esc(e.name)+' × '+fmt(e.qty)+tag+'</strong>'+
+          '<span class="pmeta">سعر الوحدة '+money(e.cost)+' = '+money(e.total)+(e.grp ? '' : ' · دفعت '+money(e.paid))+'</span>'+
+          (e.grp ? '' : '<span class="when">'+dt(e.ts)+'</span>')+'</div>'+btn+'</li>';
       }
       if(e.type==='return'){
-        return '<li class="ledger-row"><div class="lg-main"><strong>مرتجع: '+esc(e.name)+' × '+fmt(e.qty)+tag+'</strong>'+
+        return head+'<li class="ledger-row"><div class="lg-main"><strong>مرتجع: '+esc(e.name)+' × '+fmt(e.qty)+tag+'</strong>'+
           '<span class="pmeta">سعر الوحدة '+money(e.cost)+' = '+money(e.total)+' · اتخصم من حسابك</span>'+
           (e.note?'<span class="pmeta">'+esc(e.note)+'</span>':'')+'<span class="when">'+dt(e.ts)+'</span></div>'+btn+'</li>';
       }
-      return '<li class="ledger-row"><div class="lg-main"><strong>دفعة '+money(e.amount)+tag+'</strong>'+
-        (e.note?'<span class="pmeta">'+esc(e.note)+'</span>':'')+'<span class="when">'+dt(e.ts)+'</span></div>'+btn+'</li>';
+      return head+'<li class="ledger-row'+(e.grp ? ' in-grp' : '')+'"><div class="lg-main"><strong>دفعة '+money(e.amount)+tag+'</strong>'+
+        (e.note?'<span class="pmeta">'+esc(e.note)+'</span>':'')+(e.grp ? '' : '<span class="when">'+dt(e.ts)+'</span>')+'</div>'+btn+'</li>';
     }).join('') : '<li class="note">مفيش حركات لسه.</li>';
   }
 
   function updatePuTotal(){
     var q = parseFloat($('#pu-qty').value), c = parseFloat($('#pu-cost').value);
-    $('#pu-total').textContent = 'إجمالي البضاعة: '+money((q>0&&c>=0)?q*c:0);
+    $('#pu-total').textContent = 'إجمالي الصنف: '+money((q>0&&c>=0)?q*c:0);
   }
 
   /* ---------- مرتجعات الموردين وتعديل الحركات ---------- */
@@ -317,7 +329,7 @@
     var qr = $('#ps-qr').value.trim();
     if(qr && !/^[a-z][a-z0-9+.-]*:/i.test(qr)) qr = 'https://'+qr.replace(/^\/+/,'');
     if(qr && (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(qr) || !qrSvg(qr))){ toast(qrSvg(qr)==='' && qr.length>150 ? 'اللينك طويل أوي للكيو ار كود' : 'اللينك مش مظبوط، اكتبه زي facebook.com/اسم-الصفحة',true); qr = ''; $('#ps-qr').value = ''; }
-    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80',qr:qr,qrt:$('#ps-qrt').value.trim(),cp:shopCfg.cp===true};
+    shopCfg = {name:$('#ps-name').value.trim(),foot:$('#ps-foot').value.trim(),w:$('#ps-w').value==='58' ? '58' : '80',qr:qr,qrt:$('#ps-qrt').value.trim(),cp:shopCfg.cp===true,locs:shopCfg.locs||[]};
     try{ localStorage.setItem('makhzani-print',JSON.stringify(shopCfg)); }catch(e){}
     if(mode==='cloud' && db) db.doc('meta/print').set(shopCfg);
     toast('اتحفظت بيانات الفاتورة');
@@ -478,6 +490,7 @@
     $('#cust').value = ''; if($('#cust-q')) $('#cust-q').value = ''; if(typeof renderCustSel==='function') renderCustSel();
     $('#fee').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
+    if(mode==='cloud' && LOC!=='main') sale.loc = LOC;
     cart = {}; cartPrice = {};
     if(typeof cartsAfterSale==='function') cartsAfterSale();
     if(mode==='cloud'){
@@ -632,6 +645,7 @@
             if(e.type==='purchase') o.paid = num(e.paid,0); else o.note = String(e.note||'');
           }
           if(e.edited) o.edited = true;
+          if(e.grp) o.grp = String(e.grp);
           return o;
         });
         sp.push({id:String(s.id),name:s.name,phone:String(s.phone||''),addr:String(s.addr||'').slice(0,160),custId:String(s.custId||''),entries:en,created:num(s.created,Date.now())});
