@@ -1,4 +1,4 @@
-window.APP_VER = 'v42';
+window.APP_VER = 'v45';
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -216,6 +216,7 @@ function cloudDataStart(shopId){
     cloudCashiers = snap.docs.map(function(d){ return Object.assign({},d.data(),{id:d.id}); });
     renderCloudCashiers();
   },function(){});
+  cloudDevStart(shopId);
   }
   /* أخطاء الكتابة (اشتراك منتهي، صنف اتمسح…) تظهر للمستخدم */
   window.FB_ONERR = function(e,info){
@@ -397,13 +398,33 @@ function renderCloudInfo(){
   box.hidden = false;
 }
 
+/* كيبورد التليفون بيبوّظ الدخول: مسافة في الآخر، أرقام عربي، حرف كبير. بنصلّح ده ونجرّب تاني */
+function cloudDigits(t){ return String(t).replace(/[\u0660-\u0669]/g,function(c){ return c.charCodeAt(0)-0x660; }).replace(/[\u06F0-\u06F9]/g,function(c){ return c.charCodeAt(0)-0x6F0; }); }
 $('#cd-go').addEventListener('click',function(){
-  var em = $('#cd-email').value.trim(), pw = $('#cd-pass').value, err = $('#cd-err');
+  var em = $('#cd-email').value.trim(), pw = $('#cd-pass').value, err = $('#cd-err'), btn = $('#cd-go');
   err.textContent = '';
   if(!em || !pw){ err.textContent = 'اكتب الإيميل (أو اسم الدخول) والباسورد.'; return; }
-  if(em.indexOf('@')<0) em = em.toLowerCase().replace(/\s+/g,'')+'@makhzani.app';
+  var bare = em.indexOf('@')<0;
+  em = cloudDigits(em).toLowerCase().replace(/[\s\u200e\u200f\u202a-\u202e]+/g,'');
+  if(bare) em += '@makhzani.app';
   if(!window.FB){ err.textContent = 'مفيش اتصال بالنت.'; return; }
-  FB.signIn(em,pw).then(null,function(e){ err.textContent = cloudErrMsg(e); });
+  var tries = [pw], t1 = pw.trim(), t2 = cloudDigits(t1);
+  if(t1!==pw) tries.push(t1);
+  if(t2!==t1 && tries.indexOf(t2)<0) tries.push(t2);
+  btn.disabled = true;
+  (function go(i){
+    FB.signIn(em,tries[i]).then(function(){ btn.disabled = false; try{ localStorage.setItem(DEVIN_KEY,String(Date.now())); }catch(x){} },function(e){
+      var c = (e && e.code) || '';
+      if(i+1<tries.length && (c==='auth/invalid-credential' || c==='auth/wrong-password')){ go(i+1); return; }
+      btn.disabled = false;
+      var m = cloudErrMsg(e);
+      if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-email'){
+        m += ' (دخلت بـ: '+em+')';
+        if(bare && em.replace('@makhzani.app','').indexOf('.')<0) m += ' · اسم دخول الكاشير لازم يكون بالشكل ده: اسم.كود (زي ali.ab12). اسأل المالك.';
+      }
+      err.textContent = m;
+    });
+  })(0);
 });
 $('#cd-pass').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); $('#cd-go').click(); } });
 $('#cd-forgot').addEventListener('click',function(){
@@ -437,7 +458,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=42').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=45').catch(function(){}); });
     /* لما تنزل نسخة جديدة: البرنامج بيعيد تحميل نفسه لوحده لو مفيش فاتورة مفتوحة، ولو فيه بيقولك تفتحه تاني بعد الفاتورة */
     var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
@@ -458,6 +479,7 @@ function cloudSignOut(){
   try{ FB.signOut().then(done,done); }catch(e){ done(); }
 }
 function renderCloudCashiers(){
+  if(typeof renderCloudDevs==='function') renderCloudDevs();
   var p = $('#cc-panel'); if(!p) return;
   var on = (mode==='cloud' && isOwner() && cloudInfo && cloudInfo.role!=='cashier');
   p.hidden = !on;
@@ -576,4 +598,66 @@ $('#b-drive').addEventListener('click',function(){
       });
     });
   });
+});
+
+/* ---------- أجهزة الحساب: المالك يطلّع أي جهاز من بعيد ---------- */
+var DEV_KEY = 'makhzani-dev', DEVIN_KEY = 'makhzani-devin', cloudDevs = [], devId = '', devKicked = false, devExists = false, devTimer = 0;
+function cloudDevId(){
+  try{ var v = localStorage.getItem(DEV_KEY); if(!v){ v = 'd'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); localStorage.setItem(DEV_KEY,v); } return v; }
+  catch(e){ return window.__devMem || (window.__devMem = 'd'+Math.random().toString(36).slice(2,10)); }
+}
+function cloudDevUA(){
+  var u = navigator.userAgent||'', os = /Android/i.test(u) ? 'أندرويد' : /iPhone/i.test(u) ? 'آيفون' : /iPad/i.test(u) ? 'آيباد' : /Windows/i.test(u) ? 'ويندوز' : /Mac/i.test(u) ? 'ماك' : /Linux/i.test(u) ? 'لينكس' : 'جهاز';
+  var br = /Edg\//.test(u) ? 'Edge' : /OPR\//.test(u) ? 'Opera' : /Chrome\//.test(u) ? 'Chrome' : /Firefox\//.test(u) ? 'Firefox' : /Safari\//.test(u) ? 'Safari' : '';
+  return os+(br ? ' · '+br : '');
+}
+function cloudKick(){
+  if(devKicked) return; devKicked = true;
+  try{ db.doc('devices/'+devId).delete(); }catch(e){}
+  try{ localStorage.removeItem(CLOUD_KEY); }catch(e){}
+  toast('المالك سجّل خروج الجهاز ده من الحساب.',true);
+  setTimeout(function(){ var go = function(){ location.reload(); }; if(window.FB) FB.signOut().then(go,go); else go(); },2000);
+}
+function cloudDevStart(shopId){
+  if(!cloudInfo || !db || !db.watch) return;
+  devId = cloudDevId();
+  var loginAt = 0; try{ loginAt = +localStorage.getItem(DEVIN_KEY)||0; }catch(e){}
+  var isO = cloudInfo.role!=='cashier';
+  var info = {uid:cloudInfo.uid,name:isO ? 'المالك' : (cloudInfo.uname||'كاشير'),role:isO ? 'owner' : 'cashier',ua:cloudDevUA(),seen:Date.now()};
+  db.watch('devices/'+devId,function(s){
+    var ex = s.exists(), d = ex ? s.data() : null;
+    devExists = ex;
+    if(ex && d.revokedAt && d.revokedAt>loginAt){ cloudKick(); return; }
+    if(!ex && !(s.metadata && s.metadata.fromCache) && !devKicked){ devExists = true; db.doc('devices/'+devId).set(info); }
+  },function(){});
+  if(devTimer) clearInterval(devTimer);
+  devTimer = setInterval(function(){ if(devExists && !devKicked && navigator.onLine!==false) db.upd('devices/'+devId,{seen:Date.now()}); },10*60000);
+  if(isO) db.collection('devices').onSnapshot(function(snap){
+    cloudDevs = snap.docs.map(function(d){ return Object.assign({},d.data(),{id:d.id}); });
+    renderCloudDevs();
+  },function(){});
+}
+function cloudDevAgo(ts){
+  var m = Math.max(0,Math.round((Date.now()-(ts||0))/60000));
+  if(m<2) return 'دلوقتي'; if(m<60) return 'من '+m+' دقيقة'; var h = Math.round(m/60); if(h<24) return 'من '+h+' ساعة'; return 'من '+Math.round(h/24)+' يوم';
+}
+function renderCloudDevs(){
+  var p = $('#dev-panel'); if(!p) return;
+  p.hidden = !(isOwner() && cloudInfo && mode==='cloud');
+  var l = cloudDevs.slice().sort(function(a,b){ return (b.seen||0)-(a.seen||0); });
+  $('#dev-list').innerHTML = l.length ? l.map(function(d){
+    var me = d.id===devId, pend = !!d.revokedAt;
+    return '<li class="item"><div class="item-head"><strong>'+esc(d.name||'؟')+'</strong>'+(me ? '<span class="chip db">الجهاز ده</span>' : pend ? '<span class="chip local">مستني يطلع</span>' : '')+'</div>'+
+      '<div class="meta">'+esc(d.ua||'')+' · '+(d.role==='owner' ? 'حساب المالك' : 'كاشير')+' · آخر ظهور '+cloudDevAgo(d.seen)+'</div>'+
+      (me ? '' : '<div class="actions"><button class="btn" type="button" data-dev="'+esc(d.id)+'">'+(pend ? 'امسحه من القايمة' : 'اطلّعه')+'</button></div>')+'</li>';
+  }).join('') : '<li class="empty"><p>لسه مفيش أجهزة ظاهرة. هتظهر بعد ما كل جهاز يفتح البرنامج.</p></li>';
+}
+$('#dev-list').addEventListener('click',function(e){
+  var b = e.target.closest('[data-dev]'); if(!b || !isOwner() || !db) return;
+  var d = cloudDevs.filter(function(x){ return x.id===b.dataset.dev; })[0]; if(!d || d.id===devId) return;
+  if(d.revokedAt){ db.doc('devices/'+d.id).delete(); toast('اتمسح من القايمة'); return; }
+  if(!window.confirm('تطلّع جهاز «'+(d.name||'')+'» ('+(d.ua||'')+')؟ هيسجّل خروج أول ما يكون عليه نت، وهيحتاج يدخل بالإيميل والباسورد تاني.')) return;
+  db.upd('devices/'+d.id,{revokedAt:Date.now()});
+  logA('cfg','تسجيل خروج جهاز: '+(d.name||'')+' ('+(d.ua||'')+')');
+  toast('اتبعت أمر الخروج للجهاز');
 });

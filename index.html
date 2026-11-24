@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=42">
+<link rel="stylesheet" href="style.css?v=45">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -90,6 +90,8 @@ setTimeout(function(){
           <div class="fee-row" id="paid-row" hidden><label for="paid">المدفوع الآن (لو أقل = آجل)</label><input id="paid" type="number" inputmode="decimal" min="0" step="any" placeholder="كامل"></div>
           <div class="fee-row"><label for="fee">خدمة التوصيل (لو فيه)</label><input id="fee" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
           <div class="total"><span>الإجمالي</span><strong id="total">0 ج.م</strong></div>
+          <div class="fee-row"><label for="tender">الزبون دفع كام (للحساب بس)</label><input id="tender" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+          <p class="sum-line" id="chg" aria-live="polite" hidden></p>
           <button id="checkout" class="btn primary big" type="button">تأكيد البيع</button>
           <div id="last-sale" class="last-sale" hidden><span id="ls-txt"></span><button type="button" class="btn sm" data-act="print" data-sid="">اطبع الفاتورة</button></div>
         </div>
@@ -340,6 +342,7 @@ setTimeout(function(){
               <label for="pu-paid">دفعت كام دلوقتي (للفاتورة كلها)</label>
               <input id="pu-paid" type="number" inputmode="decimal" min="0" step="any" placeholder="0">
             </div>
+            <p class="sum-line" id="pu-rem" aria-live="polite"></p>
             <div class="actions">
               <button class="btn primary" type="button" id="pu-save">سجّل الفاتورة وزوّد المخزن</button>
               <button class="btn" type="button" id="pu-clear">فضّي الفاتورة</button>
@@ -569,6 +572,11 @@ setTimeout(function(){
         <div class="row-actions"><button class="btn primary" type="button" data-act="wa-send">ابعت الملخص على واتساب</button></div>
       </div>
 
+      <div class="panel" id="dev-panel" hidden>
+        <h2>الأجهزة الداخلة على الحساب</h2>
+        <p class="hint">كل جهاز دخل بحساب (حسابك أو حساب كاشير) بيظهر هنا. لو نسيت حسابك مفتوح على جهاز، اضغط «اطلّعه» وهو هيسجّل خروج لوحده أول ما يكون عليه نت.</p>
+        <ul id="dev-list" class="slist"></ul>
+      </div>
       <div class="panel" id="cc-panel" hidden>
         <h2>حسابات الكاشيرين</h2>
         <p class="hint">كل كاشير ليه حساب خاص بيه بيدخل بيه على جهازه. السيرفر نفسه بيمنعه من مسح الفواتير وتعديل الأسعار وقراءة الموردين والأرباح.</p>
@@ -732,14 +740,14 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=42" charset="utf-8"></script>
-<script src="app1.js?v=42" charset="utf-8"></script>
-<script src="app2.js?v=42" charset="utf-8"></script>
-<script src="app3.js?v=42" charset="utf-8"></script>
-<script src="cloud.js?v=42" charset="utf-8"></script>
-<script src="app4.js?v=42" charset="utf-8"></script>
-<script src="qr.js?v=42" charset="utf-8"></script>
-<script src="app6.js?v=42" charset="utf-8"></script>
-<script src="app5.js?v=42" charset="utf-8"></script>
+<script src="fb.js?v=45" charset="utf-8"></script>
+<script src="app1.js?v=45" charset="utf-8"></script>
+<script src="app2.js?v=45" charset="utf-8"></script>
+<script src="app3.js?v=45" charset="utf-8"></script>
+<script src="cloud.js?v=45" charset="utf-8"></script>
+<script src="app4.js?v=45" charset="utf-8"></script>
+<script src="qr.js?v=45" charset="utf-8"></script>
+<script src="app6.js?v=45" charset="utf-8"></script>
+<script src="app5.js?v=45" charset="utf-8"></script>
 </body>
 </html>
