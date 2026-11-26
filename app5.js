@@ -1,3 +1,4 @@
+(window.__F=window.__F||{})['app5.js']='v49';
 /* مخزني - الجزء 5 (UTF-8، جنب index.html): الاستيراد والفواتير والعملاء ثم بداية التشغيل */
 /* ---------- استيراد أصناف من Excel / CSV (المالك بس) ---------- */
 var impRows = null, impBusy = false;
@@ -682,4 +683,17 @@ function setUnitSel(u){
     h.textContent = (pk>1 && c>0) ? ('= '+fmt(round(c*pk))+' قطعة هتتضاف') : '';
   }
   $('#f-pack').addEventListener('input',hint); $('#f-ctn').addEventListener('input',hint);
+})();
+
+/* لو ملف من ملفات البرنامج لسه قديم (اتنسى في الرفع) نقول بالاسم بدل ما البرنامج يتصرف غلط */
+(function(){
+  try{
+    var need = ['fb.js','app1.js','app2.js','app3.js','app4.js','app5.js','app6.js','qr.js','cloud.js'], F = window.__F||{}, bad = need.filter(function(n){ return F[n]!==window.APP_VER; });
+    if(!bad.length) return;
+    var d = document.createElement('div');
+    d.setAttribute('role','alert');
+    d.style.cssText = 'position:sticky;top:0;z-index:99999;background:#B3261E;color:#fff;padding:12px 14px;font:700 15px/1.6 Tahoma,Arial,sans-serif;text-align:center';
+    d.textContent = 'في ملفات قديمة لسه مترفعتش: '+bad.join(' ، ')+' — ارفعها من نسخة '+window.APP_VER+' واعمل تحديث للصفحة، وما تبيعش قبل كده.';
+    document.body.insertBefore(d,document.body.firstChild);
+  }catch(e){}
 })();

@@ -1,3 +1,4 @@
+(window.__F=window.__F||{})['app3.js']='v49';
 /* مخزني - الجزء 3 من 4: الأمان والصلاحيات وسجل العمليات (UTF-8، جنب index.html) */
   var SEC_KEY = 'makhzani-sec', AUD_KEY = 'makhzani-audit', FAIL_KEY = 'makhzani-fail';
   var sec = null, aud = [], audBase = '', audBaseN = 0, sess = null, lastAct = Date.now();

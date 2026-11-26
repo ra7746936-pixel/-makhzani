@@ -1,3 +1,4 @@
+(window.__F=window.__F||{})['app4.js']='v49';
 /* مخزني - الجزء 4 من 4 (UTF-8، جنب index.html) */
   /* ---------- أحداث ---------- */
   document.addEventListener('click',function(e){

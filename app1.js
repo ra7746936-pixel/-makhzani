@@ -1,3 +1,4 @@
+(window.__F=window.__F||{})['app1.js']='v49';
 /* مخزني - الجزء 1 من 3 (UTF-8، جنب index.html) */
   document.documentElement.setAttribute('dir','rtl');
   var $ = function(s){ return document.querySelector(s); };

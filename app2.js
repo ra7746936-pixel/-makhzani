@@ -1,3 +1,4 @@
+(window.__F=window.__F||{})['app2.js']='v49';
 /* مخزني - الجزء 2 من 3 (UTF-8، جنب index.html) */
   /* ---------- مرتجعات وتعديل الفواتير ---------- */
   function findSale(id){ for(var i=0;i<sales.length;i++){ if(sales[i].id===id) return sales[i]; } var o = window.oldSales||[]; for(var j=0;j<o.length;j++){ if(o[j].id===id) return o[j]; } return null; }
