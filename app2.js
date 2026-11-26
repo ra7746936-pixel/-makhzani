@@ -3,7 +3,10 @@
   function findSale(id){ for(var i=0;i<sales.length;i++){ if(sales[i].id===id) return sales[i]; } var o = window.oldSales||[]; for(var j=0;j<o.length;j++){ if(o[j].id===id) return o[j]; } return null; }
   function maxFor(d){ var p = products.get(d.pid); return round(d.orig + (p ? p.qty : 0)); }
   function editFee(){ var v = parseFloat($('#ie-fee').value); return v>0 ? round(v) : 0; }
-  function draftTotal(){ var t = 0; draft.forEach(function(d){ t += d.qty*d.price; }); return round(t+editFee()); }
+  function draftSub(){ var t = 0; draft.forEach(function(d){ t += d.qty*d.price; }); return round(t); }
+  /* الخصم في فاتورة بتتعدّل: لو كان نسبة بيتحسب تاني على الأصناف الجديدة، ولو مبلغ ثابت مبيعديش إجمالي الأصناف */
+  function editDisc(){ var s = editSale ? findSale(editSale) : null; if(!s || !(s.disc>0)) return 0; var sb = draftSub(); return s.dp>0 ? round(sb*s.dp/100) : Math.min(s.disc,sb); }
+  function draftTotal(){ return round(draftSub()-editDisc()+editFee()); }
 
   function openInvEdit(sid){
     var s = findSale(sid);
@@ -22,7 +25,7 @@
     box.hidden = !s;
     if(!s) return;
     $('#ie-title').textContent = 'تعديل فاتورة '+invCode(s)+' · '+dt(s.ts);
-    $('#ie-hint').textContent = 'الفاتورة الأصلية '+money(s.total)+'. نقّص الكمية = مرتجع بيرجع للمخزن. زوّد أو ضيف صنف = بيتخصم من المخزن.';
+    $('#ie-hint').textContent = 'الفاتورة الأصلية '+money(s.total)+'.'+(s.disc>0 ? ' (فيها خصم '+money(s.disc)+(s.dp>0 ? ' = '+fmt(s.dp)+'% بيتحسب تاني على الأصناف' : ' ثابت')+')' : '')+' نقّص الكمية = مرتجع بيرجع للمخزن. زوّد أو ضيف صنف = بيتخصم من المخزن.';
     $('#ie-lines').innerHTML = draft.map(function(d,i){
       var note = d.qty===0 ? 'هيتشال من الفاتورة ويرجع للمخزن' : (d.orig>0 ? 'كان '+fmt(d.orig)+' · ' : 'صنف جديد · ')+fmt(d.price)+' × '+fmt(d.qty)+' = '+money(d.qty*d.price);
       if(!products.get(d.pid)) note += ' · الصنف اتمسح من المخزن';
@@ -79,6 +82,7 @@
       total:total, fee:editFee(),
       edits:(s.edits||[]).concat([{ts:Date.now(),from:s.total,to:total,by:(sess?sess.name:'')}])
     });
+    var nd = editDisc(); if(nd>0) ns.disc = nd; else { delete ns.disc; delete ns.dp; }
     var chg = draft.filter(function(d){ return d.qty!==d.orig; }).map(function(d){ return d.name+': '+fmt(d.orig)+'←'+fmt(d.qty); }).join('، ');
     logA('edit','تعديل فاتورة '+invCode(s)+' من '+money(s.total)+' إلى '+money(total)+' ('+chg+')'+(s.by ? ' — البائع: '+s.by.name : ''),{id:s.id,from:s.total,to:total});
     custSaleSync(s,ns);
@@ -357,6 +361,7 @@
       '<div class="rc-sec rc-items"><table><thead><tr><th class="rn">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       '<div class="rc-sec rc-sum">'+
         kv('عدد الأصناف',fmt(cnt))+
+        (s.disc>0 ? kv('قبل الخصم',money(round(s.total-(s.fee||0)+s.disc)))+kv('خصم'+(s.dp>0 ? ' '+fmt(s.dp)+'%' : ''),'− '+money(s.disc)) : '')+
         (s.fee>0 ? kv('خدمة التوصيل',money(s.fee)) : '')+
         kv('الإجمالي',money(s.total),'rc-grand')+
         (s.paid!=null && s.paid<s.total ? kv('المدفوع',money(s.paid))+kv('المتبقي على العميل',money(round(s.total-s.paid)),'rc-due') : '')+
@@ -372,7 +377,7 @@
     var st = document.getElementById('pg-style');
     if(!st){ st = document.createElement('style'); st.id = 'pg-style'; document.head.appendChild(st); }
     st.textContent = '@page{size:'+mm+'mm auto;margin:0}';
-    var rc = $('#receipt');
+    var rc = $('#receipt'); $('#stmt-print').innerHTML = '';
     rc.innerHTML = buildReceipt(s);
     /* عرض آمن: معظم الطابعات الحرارية بتطبع أقل من عرض الورق (80مم ≈ 72 فعلي، 58مم ≈ 48 فعلي) فبنسيب هامش من الجنبين */
     rc.style.width = (mm===58 ? 44 : 66)+'mm';
@@ -441,6 +446,7 @@
         rows.push([dt(s.ts),invCode(s),l.name,l.qty,l.price,round(l.qty*l.price),(hasC?l.cost:''),(hasC?round((l.price-l.cost)*l.qty):''),(s.cust?s.cust.name:'')]);
       });
       if(s.fee>0) rows.push([dt(s.ts),invCode(s),'خدمة توصيل',1,s.fee,s.fee,'','',(s.cust?s.cust.name:'')]);
+      if(s.disc>0) rows.push([dt(s.ts),invCode(s),'خصم'+(s.dp>0 ? ' '+s.dp+'%' : ''),1,-s.disc,-s.disc,'',-s.disc,(s.cust?s.cust.name:'')]);
     });
     downloadCsv('invoices-'+period,rows);
   }
@@ -475,10 +481,13 @@
     });
     if(bad){ toast('المتاح من '+bad.name+' '+fmt(bad.qty)+' بس',true); return; }
     if(!lines.length) return;
-    var fee = feeVal(); total += fee;
+    var subT = round(total), dsc = canPrice() ? parseDisc(subT) : {amt:0,pct:0};
+    if(dsc.err){ toast(dsc.err,true); if($('#disc')) $('#disc').focus(); return; }
+    var fee = feeVal(); total = round(subT - dsc.amt + fee);
     var cid = $('#cust').value, cu = cid ? customers.get(cid) : null;
     var sale = {id:uid(),ts:Date.now(),lines:lines,total:round(total)};
     if(fee>0) sale.fee = fee;
+    if(dsc.amt>0){ sale.disc = dsc.amt; if(dsc.pct>0) sale.dp = dsc.pct; }
     if(cu) sale.cust = {id:cu.id,name:cu.name};
     /* بيع آجل: لو اتكتب مدفوع أقل من الإجمالي، الباقي بيتسجل دين على العميل */
     var paidTxt = cu ? $('#paid').value.trim() : '', paidN = paidTxt==='' ? null : parseFloat(paidTxt);
@@ -488,7 +497,7 @@
     }
     $('#paid').value = '';
     $('#cust').value = ''; if($('#cust-q')) $('#cust-q').value = ''; if(typeof renderCustSel==='function') renderCustSel();
-    $('#fee').value = '';
+    $('#fee').value = ''; $('#tender').value = ''; if($('#disc')) $('#disc').value = '';
     if(sess) sale.by = {id:sess.id,name:sess.name};
     if(mode==='cloud' && LOC!=='main') sale.loc = LOC;
     cart = {}; cartPrice = {};
@@ -625,6 +634,7 @@
         var eds = (Array.isArray(s.edits)?s.edits:[]).filter(function(x){ return x && isFinite(+x.ts); }).map(function(x){ return {ts:+x.ts,from:num(x.from,0),to:num(x.to,0),by:String(x.by||'')}; });
         var one = {id:String(s.id||uid()),ts:+s.ts,lines:lines,total:num(s.total,0)};
         if(+s.fee>0) one.fee = round(+s.fee);
+        if(+s.disc>0){ one.disc = round(+s.disc); if(+s.dp>0) one.dp = +s.dp; }
         if(s.cust && s.cust.id && s.cust.name) one.cust = {id:String(s.cust.id),name:String(s.cust.name)};
         if(s.paid!=null && +s.paid>=0) one.paid = round(+s.paid);
         if(+s.no>0) one.no = Math.floor(+s.no);

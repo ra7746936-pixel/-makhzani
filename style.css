@@ -179,6 +179,8 @@ tr:last-child td{border-bottom:0}
 .back{margin-bottom:12px}
 .sub{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .sum-line{grid-column:1 / -1;margin:0;color:var(--muted);font-size:14px}
+#chg{font-size:22px;font-weight:700;padding:10px 12px;border-radius:12px;background:var(--ok-bg);color:var(--ok-ink);text-align:center}
+#chg.short{background:var(--warn-bg);color:var(--warn-ink)}
 .ledger{list-style:none;margin:0;padding:0}
 .ledger-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .ledger-row:last-child{border-bottom:0}
@@ -212,7 +214,32 @@ html.locked #app{display:none}
 /* الباركود والطباعة */
 .last-sale{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--ok-bg);color:var(--ok-ink);font-size:14px}
 .receipt{display:none}
+/* كشف الحساب */
+.stmt-box{margin-top:12px}
+#stmt-print{display:none}
+.stmt{font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:var(--ink)}
+.stmt h3{margin:0 0 4px;font-size:18px}
+.stmt .st-meta{margin:2px 0;font-size:13px;color:var(--muted)}
+.stmt .st-wrap{overflow-x:auto;margin-top:8px}
+.stmt table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+.stmt th,.stmt td{border:1px solid var(--line);padding:6px 7px;text-align:start;vertical-align:top}
+.stmt th{background:var(--surface2,var(--bg));font-weight:700}
+.stmt td.n,.stmt th.n{text-align:end;white-space:nowrap}
+.stmt tr.st-open td,.stmt tr.st-tot td{font-weight:700;background:var(--bg)}
+.stmt .st-final{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:17px;font-weight:700;background:var(--warn-bg);color:var(--warn-ink)}
+.stmt .st-final.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.stmt .st-btns{margin-top:10px}
 @media print{
+  html.printing .stmt{color:#000}
+  html.printing #stmt-print{display:block;padding:0;background:#fff;color:#000}
+  html.printing #stmt-print .st-wrap{overflow:visible}
+  html.printing #stmt-print table{min-width:0;font-size:12px}
+  html.printing #stmt-print th,html.printing #stmt-print td{border:1px solid #000;color:#000;background:#fff}
+  html.printing #stmt-print .st-meta{color:#000}
+  html.printing #stmt-print .st-final{background:#fff;color:#000;border:2px solid #000}
+  html.printing #stmt-print .st-btns{display:none}
+  html.printing #stmt-print tr{page-break-inside:avoid}
+  html.printing #receipt:empty{display:none}
   html.printing body{padding:0;background:#fff;color:#000}
   html.printing body::before,html.printing #app,html.printing #toast,html.printing #lock{display:none!important}
   html.printing .receipt{display:block;margin:0 auto;padding:3mm 0;background:#fff;color:#000;font-family:Tahoma,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.45}

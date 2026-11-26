@@ -215,6 +215,16 @@
 
   $('#ie-fee').addEventListener('input',function(){ renderInvEdit(); });
   $('#fee').addEventListener('input',function(){ render(); });
+  /* الباقي للزبون: عرض بس، مبيدخلش في الفاتورة ولا الآجل */
+  window.showChange = function(total){
+    var el = $('#chg'), raw = $('#tender').value, t = raw==='' ? null : parseFloat(raw);
+    if(t===null || !(t>=0) || !(total>0)){ el.hidden = true; el.textContent = ''; return; }
+    var d = round(t - total); el.hidden = false;
+    el.className = d>=0 ? '' : 'short';
+    el.textContent = d>=0 ? 'الباقي للزبون: '+money(d) : 'لسه ناقص على الزبون: '+money(-d);
+  };
+  $('#tender').addEventListener('input',function(){ render(); });
+  $('#disc').addEventListener('input',function(){ render(); });
   $('#ie-lines').addEventListener('change',function(e){
     var inp = e.target.closest('[data-iqty]');
     if(!inp) return;
@@ -326,7 +336,17 @@
         '<div class="actions"><button class="btn sm" type="button" data-pux="'+i+'">شيل</button></div></li>';
     }).join('');
     $('#pu-btotal').textContent = 'إجمالي الفاتورة: '+money(round(tot));
+    puRem(round(tot));
   }
+  /* عرض بس: الباقي على المورد، مش بيتسجل لوحده */
+  function puRem(tot){
+    var el = $('#pu-rem'); if(!el) return;
+    var raw = $('#pu-paid').value, p = raw==='' ? 0 : parseFloat(raw);
+    if(!(tot>0) || !(p>=0)){ el.textContent = ''; return; }
+    var r = round(tot - p);
+    el.textContent = r>0 ? 'الباقي للمورد: '+money(r) : (r<0 ? 'المدفوع أكبر من الفاتورة بـ '+money(-r) : 'مدفوعة بالكامل');
+  }
+  $('#pu-paid').addEventListener('input',function(){ renderPuBasket(); });
   window.renderPuBasket = renderPuBasket;
   $('#pu-form').addEventListener('submit',function(e){
     e.preventDefault();
@@ -568,6 +588,7 @@
         inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '',l.name,l.qty,l.price,tot,hasC ? l.cost : '',hasC ? round((l.price-l.cost)*l.qty) : '',s.cust ? s.cust.name : '']);
       });
       if(s.fee>0){ rev += s.fee; inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '','خدمة توصيل',1,s.fee,s.fee,'',s.fee,s.cust ? s.cust.name : '']); profit += s.fee; }
+      if(s.disc>0){ rev -= s.disc; profit -= s.disc; inv.push([invCode(s),dt(s.ts),s.by ? s.by.name : '','خصم'+(s.dp>0 ? ' '+s.dp+'%' : ''),1,-s.disc,-s.disc,'',-s.disc,s.cust ? s.cust.name : '']); }
     });
     var stockVal = 0;
     var itm = [['الصنف','سعر البيع','الكمية المتبقية','الحالة','القطع في الكرتونة','الكراتين المتبقية','سعر الجملة','قيمة المخزون (جملة)','الباركود','اتباع (قطعة)','إجمالي الإيراد','الوحدة']];
@@ -754,3 +775,79 @@ function svcToggle(){
 }
 $('#f-svc').addEventListener('change',svcToggle);
 $('#pform').addEventListener('reset',function(){ setTimeout(svcToggle,0); });
+
+/* ---------- كشف حساب عميل / مورد (أسبوع / شهر / كل الحركات) + طباعة ---------- */
+function stmtBuild(kind,x,days){
+  var now = Date.now(), from = 0;
+  if(days>0){ var d0 = new Date(now); d0.setHours(0,0,0,0); from = d0.getTime()-(days-1)*86400000; }
+  var isC = kind==='cud', open = 0, rows = [], dr = 0, cr = 0;
+  /* مدين = بيزوّد الرصيد (على العميل / لينا عند المورد)، دائن = بيقلّله */
+  var all = (x.entries||[]).map(function(e,i){ return {e:e,i:i}; }).sort(function(a,b){ return (a.e.ts-b.e.ts) || (a.i-b.i); });
+  all.forEach(function(o){
+    var e = o.e, de = 0, cd = 0, tx = '';
+    if(isC){
+      if(e.type==='sale'){ de = e.total; cd = e.paid||0; tx = 'فاتورة آجل '+(e.no ? '#'+e.no : ''); }
+      else if(e.type==='debt'){ de = e.amount; tx = 'دين قديم'+(e.note ? ' — '+e.note : ''); }
+      else { cd = e.amount; tx = 'دفعة من العميل'+(e.note ? ' — '+e.note : ''); }
+    }else{
+      if(e.type==='purchase'){ de = e.total; cd = e.paid||0; tx = 'بضاعة: '+e.name+' × '+fmt(e.qty); }
+      else if(e.type==='return'){ cd = e.total; tx = 'مرتجع: '+e.name+' × '+fmt(e.qty); }
+      else { cd = e.amount; tx = 'دفعة للمورد'+(e.note ? ' — '+e.note : ''); }
+    }
+    de = round(de); cd = round(cd);
+    if(e.ts<from){ open = round(open+de-cd); return; }
+    rows.push({ts:e.ts,tx:tx,de:de,cd:cd}); dr += de; cr += cd;
+  });
+  var bal = open; rows.forEach(function(r){ bal = round(bal+r.de-r.cd); r.bal = bal; });
+  return {from:from,to:now,open:open,rows:rows,dr:round(dr),cr:round(cr),close:bal};
+}
+function stmtHtml(kind,x,days,forPrint){
+  var isC = kind==='cud', st = stmtBuild(kind,x,days), shop = (typeof shopCfg!=='undefined' && shopCfg.name) ? shopCfg.name : 'مخزني';
+  var dd = function(t){ var d = new Date(t), z = function(n){ return (n<10?'0':'')+n; }; return z(d.getDate())+'/'+z(d.getMonth()+1)+'/'+d.getFullYear(); };
+  var per = days===0 ? 'كل الحركات (لحد '+dd(st.to)+')' : 'من '+dd(st.from)+' إلى '+dd(st.to)+(days===7 ? ' (آخر أسبوع)' : ' (آخر شهر)');
+  var h = '<div class="stmt"><h3>'+esc(shop)+' — كشف حساب '+(isC ? 'عميل' : 'مورد')+'</h3>'+
+    '<p class="st-meta"><strong>'+esc(x.name)+'</strong>'+(x.phone ? ' · تليفون: '+esc(x.phone) : '')+'</p>'+
+    '<p class="st-meta">الفترة: '+per+' · اتطبع: '+dd(Date.now())+'</p>';
+  if(isC){
+    var inv = custInvoices(x.id).filter(function(s){ return s.ts>=st.from; }), t = 0; inv.forEach(function(s){ t += s.total; });
+    h += '<p class="st-meta">فواتير الفترة (كاش وآجل): '+fmt(inv.length)+' · إجمالي مشترياته فيها: '+money(round(t))+'</p>';
+  }
+  h += '<div class="st-wrap"><table><thead><tr><th>التاريخ</th><th>البيان</th><th class="n">'+(isC ? 'فاتورة / دين' : 'مشتريات')+'</th><th class="n">'+(isC ? 'مدفوع' : 'مدفوع / مرتجع')+'</th><th class="n">الرصيد</th></tr></thead><tbody>'+
+    '<tr class="st-open"><td colspan="4">رصيد قبل الفترة</td><td class="n">'+money(st.open)+'</td></tr>'+
+    (st.rows.length ? st.rows.map(function(r){ return '<tr><td>'+dt(r.ts)+'</td><td>'+esc(r.tx)+'</td><td class="n">'+(r.de ? money(r.de) : '—')+'</td><td class="n">'+(r.cd ? money(r.cd) : '—')+'</td><td class="n">'+money(r.bal)+'</td></tr>'; }).join('') : '<tr><td colspan="5">مفيش حركات في الفترة دي.</td></tr>')+
+    '<tr class="st-tot"><td colspan="2">إجمالي الفترة</td><td class="n">'+money(st.dr)+'</td><td class="n">'+money(st.cr)+'</td><td class="n">'+money(st.close)+'</td></tr></tbody></table></div>';
+  var c = st.close, txt, cls = '';
+  if(isC){ txt = c>0 ? 'إجمالي المتبقي على العميل: '+money(c) : c<0 ? 'للعميل عندنا: '+money(-c) : 'الحساب متسوّي'; if(c<=0) cls = ' ok'; }
+  else{ txt = c>0 ? 'إجمالي المتبقي للمورد علينا: '+money(c) : c<0 ? 'لينا عند المورد: '+money(-c) : 'الحساب متسوّي'; if(c<=0) cls = ' ok'; }
+  h += '<div class="st-final'+cls+'">'+txt+'</div>';
+  var ln = linkedNet(isC ? 'cust' : 'sup',x);
+  if(ln!==null){ var lb = isC ? custBal(ln) : balLabel(ln); h += '<p class="st-meta">الصافي بعد ما حسابه كعميل ومورد يتخصموا من بعض (على الحساب كله مش الفترة بس): '+esc(lb[0])+'</p>'; }
+  h += '</div>';
+  return h;
+}
+var stmtCur = {};
+document.addEventListener('click',function(e){
+  var b = e.target.closest('[data-stmt]'), pb = e.target.closest('[data-stmt-print]');
+  if(b){
+    var kind = b.dataset.stmt, x = kind==='cud' ? (selCust ? customers.get(selCust) : null) : (selSup ? suppliers.get(selSup) : null);
+    if(!x) return;
+    var days = parseInt(b.dataset.days,10)||0; stmtCur = {kind:kind,id:x.id,days:days};
+    $('#'+kind+'-stmt').innerHTML = stmtHtml(kind,x,days)+'<div class="st-btns"><button class="btn primary" type="button" data-stmt-print="'+kind+'">اطبع الكشف</button></div>';
+    return;
+  }
+  if(pb){
+    var k = pb.dataset.stmtPrint, y = k==='cud' ? customers.get(stmtCur.id) : suppliers.get(stmtCur.id);
+    if(!y || stmtCur.kind!==k){ toast('اعرض الكشف الأول',true); return; }
+    logA('print','طباعة كشف حساب '+(k==='cud' ? 'عميل ' : 'مورد ')+y.name);
+    var st = document.getElementById('pg-style');
+    if(!st){ st = document.createElement('style'); st.id = 'pg-style'; document.head.appendChild(st); }
+    st.textContent = '@page{size:A4;margin:12mm}';
+    $('#receipt').innerHTML = ''; $('#receipt').removeAttribute('style');
+    $('#stmt-print').innerHTML = stmtHtml(k,y,stmtCur.days);
+    var root = document.documentElement;
+    if((' '+root.className+' ').indexOf(' printing ')<0) root.className += ' printing';
+    var done = function(){ window.removeEventListener('afterprint',done); root.className = (' '+root.className+' ').replace(/ printing /g,' ').replace(/\s+/g,' ').replace(/^ | $/g,''); $('#stmt-print').innerHTML = ''; };
+    window.addEventListener('afterprint',done);
+    setTimeout(function(){ try{ window.print(); }catch(err){ done(); toast('الطباعة مش متاحة هنا',true); } },50);
+  }
+});

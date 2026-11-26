@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0E6B55">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=48">
 <script>
 /* ===== إعدادات الترخيص: للنسخة اللي بتبعتها للعملاء بس ===== */
 var LICENSE_PUBLIC_KEY = '';
@@ -89,6 +89,8 @@ setTimeout(function(){
           <div class="fee-row cust-row"><label for="cust">اختار</label><select id="cust"></select></div>
           <div class="fee-row" id="paid-row" hidden><label for="paid">المدفوع الآن (لو أقل = آجل)</label><input id="paid" type="number" inputmode="decimal" min="0" step="any" placeholder="كامل"></div>
           <div class="fee-row"><label for="fee">خدمة التوصيل (لو فيه)</label><input id="fee" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+          <div class="fee-row" id="disc-row"><label for="disc">خصم (مبلغ أو %)</label><input id="disc" type="text" inputmode="decimal" dir="ltr" autocomplete="off" placeholder="مثلا 50 أو 10%"></div>
+          <p class="sum-line" id="disc-line" aria-live="polite" hidden></p>
           <div class="total"><span>الإجمالي</span><strong id="total">0 ج.م</strong></div>
           <div class="fee-row"><label for="tender">الزبون دفع كام (للحساب بس)</label><input id="tender" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
           <p class="sum-line" id="chg" aria-live="polite" hidden></p>
@@ -395,6 +397,16 @@ setTimeout(function(){
         </div>
 
         <div class="panel">
+          <h2>كشف حساب</h2>
+          <p class="hint">كل الحركات في الفترة، مع الرصيد قبلها والرصيد بعدها، وتقدر تطبعه.</p>
+          <div class="row-actions">
+            <button class="btn" type="button" data-stmt="sup" data-days="7">آخر أسبوع</button>
+            <button class="btn" type="button" data-stmt="sup" data-days="30">آخر شهر</button>
+            <button class="btn ghost" type="button" data-stmt="sup" data-days="0">كل الحركات</button>
+          </div>
+          <div id="sup-stmt" class="stmt-box"></div>
+        </div>
+        <div class="panel">
           <h2>حركات الحساب</h2>
           <ul id="sd-ledger" class="ledger"></ul>
         </div>
@@ -450,6 +462,16 @@ setTimeout(function(){
           </form>
         </div>
         <div class="panel" id="cud-link" hidden></div>
+        <div class="panel">
+          <h2>كشف حساب</h2>
+          <p class="hint">كل الحركات في الفترة، مع الرصيد قبلها والرصيد بعدها، وتقدر تطبعه.</p>
+          <div class="row-actions">
+            <button class="btn" type="button" data-stmt="cud" data-days="7">آخر أسبوع</button>
+            <button class="btn" type="button" data-stmt="cud" data-days="30">آخر شهر</button>
+            <button class="btn ghost" type="button" data-stmt="cud" data-days="0">كل الحركات</button>
+          </div>
+          <div id="cud-stmt" class="stmt-box"></div>
+        </div>
         <div class="panel">
           <h2>حركات الحساب</h2>
           <ul id="cud-ledger" class="ledger"></ul>
@@ -656,6 +678,7 @@ setTimeout(function(){
 </div>
 
 <div id="receipt" class="receipt" dir="rtl"></div>
+<div id="stmt-print" class="stmt" dir="rtl"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <div id="cloud" class="lock" dir="rtl" hidden>
@@ -740,14 +763,14 @@ setTimeout(function(){
   </div>
 </div>
 
-<script src="fb.js?v=45" charset="utf-8"></script>
-<script src="app1.js?v=45" charset="utf-8"></script>
-<script src="app2.js?v=45" charset="utf-8"></script>
-<script src="app3.js?v=45" charset="utf-8"></script>
-<script src="cloud.js?v=45" charset="utf-8"></script>
-<script src="app4.js?v=45" charset="utf-8"></script>
-<script src="qr.js?v=45" charset="utf-8"></script>
-<script src="app6.js?v=45" charset="utf-8"></script>
-<script src="app5.js?v=45" charset="utf-8"></script>
+<script src="fb.js?v=48" charset="utf-8"></script>
+<script src="app1.js?v=48" charset="utf-8"></script>
+<script src="app2.js?v=48" charset="utf-8"></script>
+<script src="app3.js?v=48" charset="utf-8"></script>
+<script src="cloud.js?v=48" charset="utf-8"></script>
+<script src="app4.js?v=48" charset="utf-8"></script>
+<script src="qr.js?v=48" charset="utf-8"></script>
+<script src="app6.js?v=48" charset="utf-8"></script>
+<script src="app5.js?v=48" charset="utf-8"></script>
 </body>
 </html>
