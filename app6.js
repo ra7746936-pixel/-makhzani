@@ -193,13 +193,13 @@ document.addEventListener('keydown',function(e){
    البيع بيتم للفاتورة اللي قدامك بس. والفواتير المفتوحة بتتحفظ على الجهاز عشان لو الصفحة اتقفلت أو اتحدثت متضيعش. */
 var CT_KEY = 'makhzani-drafts', CT_MAX = 4, ctSlots = [{}], ctCur = 0, ctBooted = false;
 function ctField(id){ var e = document.querySelector(id); return e ? e.value : ''; }
-function ctSnap(){ return {cart:cart,price:cartPrice,cust:ctField('#cust'),paid:ctField('#paid'),fee:ctField('#fee')}; }
+function ctSnap(){ return {cart:cart,price:cartPrice,cust:ctField('#cust'),paid:ctField('#paid'),fee:ctField('#fee'),disc:ctField('#disc')}; }
 function ctItems(s){ return Object.keys(s.cart||{}).length; }
 function ctLoad(s){
   cart = s.cart || {}; cartPrice = s.price || {}; cartSeq = {};
   var cu = s.cust && customers.get(s.cust) ? customers.get(s.cust) : null;
   $('#cust-q').value = cu ? cu.name : ''; renderCustSel(); $('#cust').value = cu ? cu.id : ''; renderCustSel();
-  $('#paid').value = s.paid || ''; $('#fee').value = s.fee || '';
+  $('#paid').value = s.paid || ''; $('#fee').value = s.fee || ''; $('#disc').value = s.disc || '';
 }
 function ctSave(){
   if(!ctBooted) return;
@@ -260,7 +260,7 @@ document.addEventListener('click',function(e){
   ctSwitch(+b.dataset.ct);
 });
 /* تغيير العميل أو المدفوع أو التوصيل بيتحفظ في المسودة علطول */
-['#cust','#paid','#fee'].forEach(function(id){ var e = document.querySelector(id); if(e){ e.addEventListener('change',ctSave); e.addEventListener('input',ctSave); } });
+['#cust','#paid','#fee','#disc'].forEach(function(id){ var e = document.querySelector(id); if(e){ e.addEventListener('change',ctSave); e.addEventListener('input',ctSave); } });
 
 /* بحث قايمة الموردين */
 (function(){ var e = document.querySelector('#su-q'); if(e) e.addEventListener('input',function(){ renderSup(); }); })();

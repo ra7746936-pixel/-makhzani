@@ -28,6 +28,18 @@
     var c = Math.floor(q/pack), r = round(q-c*pack);
     return fmt(c)+' كرتونة'+(r>0 ? ' و '+fmt(r)+' قطعة' : '');
   }
+  /* الخصم: رقم = مبلغ بالجنيه، أو رقم وعلامة % = نسبة من إجمالي الأصناف (من غير التوصيل) */
+  function parseDisc(sub,raw){
+    var t = String(raw==null ? ($('#disc') ? $('#disc').value : '') : raw).replace(/[\u0660-\u0669]/g,function(c){ return c.charCodeAt(0)-0x660; }).replace(/[\u06F0-\u06F9]/g,function(c){ return c.charCodeAt(0)-0x6F0; }).replace(/\u066A|\uFF05/g,'%').replace(/[\u066B\u060C,]/g,'.').replace(/\s+/g,'');
+    if(t==='') return {amt:0,pct:0};
+    var isP = /%$/.test(t); if(isP) t = t.slice(0,-1);
+    if(!/^\d*\.?\d+$|^\d+\.$/.test(t)) return {err:'اكتب الخصم أرقام بس، مثلا 50 أو 10%'};
+    var v = parseFloat(t); if(!(v>=0)) return {err:'الخصم غلط'};
+    if(isP){ if(v>100) return {err:'النسبة لازم تكون من 0 لـ 100%'}; return {amt:round(sub*v/100),pct:v}; }
+    if(v>round(sub)) return {err:'الخصم ('+money(v)+') أكبر من إجمالي الأصناف ('+money(round(sub))+')'};
+    return {amt:round(v),pct:0};
+  }
+  window.parseDisc = parseDisc;
   function feeVal(){ var v = parseFloat($('#fee').value); return v>0 ? round(v) : 0; }
   var view = 'sell';
   var period = 'today';
@@ -305,7 +317,12 @@
         '<button type="button" class="rm" data-act="rm" data-id="'+esc(id)+'" aria-label="شيل من الفاتورة">×</button></li>';
     }).join('') : '<li class="note">اضغط على الأصناف اللي عايز تبيعها.</li>';
     if(!typing) $('#cart').innerHTML = cartHtml;
-    $('#total').textContent = money(total + (ids.length ? feeVal() : 0));
+    var dr = $('#disc-row'); if(dr) dr.hidden = !canPrice();
+    var dsc = (ids.length && canPrice()) ? parseDisc(round(total)) : {amt:0,pct:0}, dl = $('#disc-line');
+    if(dl){ dl.hidden = !(dsc.err || dsc.amt>0); dl.style.color = dsc.err ? 'var(--bad-ink)' : ''; dl.textContent = dsc.err ? dsc.err : (dsc.amt>0 ? 'الخصم: − '+money(dsc.amt)+(dsc.pct ? ' ('+fmt(dsc.pct)+'%)' : '')+' · قبل الخصم '+money(round(total)) : ''); }
+    var net = ids.length ? round(round(total) - (dsc.err ? 0 : dsc.amt) + feeVal()) : 0;
+    $('#total').textContent = money(net);
+    if(typeof showChange==='function') showChange(net);
     $('#checkout').disabled = !ids.length;
     var ls = lastSaleId ? findSale(lastSaleId) : null;
     if(typeof renderCartTabs==='function') renderCartTabs();
@@ -373,6 +390,7 @@
   function profitFor(list){
     var profit = 0, unknown = 0;
     list.forEach(function(s){
+      profit -= (s.disc||0);
       s.lines.forEach(function(l){
         if(l.cost==null || !isFinite(+l.cost)) unknown++;
         else profit += (l.price-l.cost)*l.qty;
@@ -385,6 +403,7 @@
     var r = periodRows();
     var rev = 0, pcs = 0, stockVal = 0;
     r.rows.forEach(function(x){ rev += x.rev; pcs += x.sold; });
+    sales.forEach(function(s){ if(s.disc>0 && (period==='all' || s.ts>=r.t0)) rev -= s.disc; });
     products.forEach(function(p){ if(!p.svc) stockVal += (typeof totQty==='function' ? totQty(p) : p.qty)*p.price; });
     var pr = profitFor(sales.filter(function(s){ return period==='all' || s.ts>=r.t0; }));
     var owed = 0, custOwed = 0;

@@ -434,7 +434,7 @@ function invSince(per){
 function invRow(s,showCust,ro){
   var tag = (s.edits && s.edits.length) ? '<span class="pill warn">اتعدّلت</span>' : '';
   var ct = (showCust!==false && s.cust) ? '<span class="cust-tag">· '+esc(s.cust.name)+'</span>' : '';
-  var fee = s.fee>0 ? '<span class="pmeta"> · توصيل '+money(s.fee)+'</span>' : '';
+  var fee = (s.fee>0 ? '<span class="pmeta"> · توصيل '+money(s.fee)+'</span>' : '')+(s.disc>0 ? '<span class="pmeta"> · خصم '+money(s.disc)+(s.dp>0 ? ' ('+fmt(s.dp)+'%)' : '')+'</span>' : '');
   return '<li><span class="when"><span class="inv-num">'+esc(invCode(s))+'</span> · '+dt(s.ts)+(s.by ? ' · '+esc(s.by.name) : '')+ct+'</span>'+
     '<span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+fee+'</span><span class="sum">'+money(s.total)+'</span>'+
     '<div class="inv-act">'+(ro ? '<span class="pill zero">قديمة (للعرض فقط)</span>' : '<button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button>')+'<button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
