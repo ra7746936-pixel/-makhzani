@@ -1,4 +1,4 @@
-(window.__F=window.__F||{})['app5.js']='v49';
+(window.__F=window.__F||{})['app5.js']='v50';
 /* مخزني - الجزء 5 (UTF-8، جنب index.html): الاستيراد والفواتير والعملاء ثم بداية التشغيل */
 /* ---------- استيراد أصناف من Excel / CSV (المالك بس) ---------- */
 var impRows = null, impBusy = false;
@@ -437,7 +437,7 @@ function invRow(s,showCust,ro){
   var ct = (showCust!==false && s.cust) ? '<span class="cust-tag">· '+esc(s.cust.name)+'</span>' : '';
   var fee = (s.fee>0 ? '<span class="pmeta"> · توصيل '+money(s.fee)+'</span>' : '')+(s.disc>0 ? '<span class="pmeta"> · خصم '+money(s.disc)+(s.dp>0 ? ' ('+fmt(s.dp)+'%)' : '')+'</span>' : '');
   return '<li><span class="when"><span class="inv-num">'+esc(invCode(s))+'</span> · '+dt(s.ts)+(s.by ? ' · '+esc(s.by.name) : '')+ct+'</span>'+
-    '<span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+fee+'</span><span class="sum">'+money(s.total)+'</span>'+
+    '<span class="what">'+s.lines.map(function(l,li){ return (li+1)+'. '+esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+fee+'</span><span class="sum">'+money(s.total)+'</span>'+
     '<div class="inv-act">'+(ro ? '<span class="pill zero">قديمة (للعرض فقط)</span>' : '<button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button>')+'<button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
 }
 function renderInv(){
@@ -688,12 +688,12 @@ function setUnitSel(u){
 /* لو ملف من ملفات البرنامج لسه قديم (اتنسى في الرفع) نقول بالاسم بدل ما البرنامج يتصرف غلط */
 (function(){
   try{
-    var need = ['fb.js','app1.js','app2.js','app3.js','app4.js','app5.js','app6.js','qr.js','cloud.js'], F = window.__F||{}, bad = need.filter(function(n){ return F[n]!==window.APP_VER; });
+    var M = window.FILE_MIN||{}, F = window.__F||{}, bad = Object.keys(M).filter(function(n){ return !(parseInt(String(F[n]||'').replace(/\D/g,''),10)>=M[n]); });
     if(!bad.length) return;
     var d = document.createElement('div');
     d.setAttribute('role','alert');
     d.style.cssText = 'position:sticky;top:0;z-index:99999;background:#B3261E;color:#fff;padding:12px 14px;font:700 15px/1.6 Tahoma,Arial,sans-serif;text-align:center';
-    d.textContent = 'في ملفات قديمة لسه مترفعتش: '+bad.join(' ، ')+' — ارفعها من نسخة '+window.APP_VER+' واعمل تحديث للصفحة، وما تبيعش قبل كده.';
+    d.textContent = 'في ملفات قديمة لسه مترفعتش: '+bad.join(' ، ')+' — ارفعها من آخر تسليم (نسخة '+window.APP_VER+') واعمل تحديث للصفحة، وما تبيعش قبل كده.';
     document.body.insertBefore(d,document.body.firstChild);
   }catch(e){}
 })();

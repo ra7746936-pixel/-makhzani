@@ -1,4 +1,4 @@
-(window.__F=window.__F||{})['app2.js']='v49';
+(window.__F=window.__F||{})['app2.js']='v50';
 /* مخزني - الجزء 2 من 3 (UTF-8، جنب index.html) */
   /* ---------- مرتجعات وتعديل الفواتير ---------- */
   function findSale(id){ for(var i=0;i<sales.length;i++){ if(sales[i].id===id) return sales[i]; } var o = window.oldSales||[]; for(var j=0;j<o.length;j++){ if(o[j].id===id) return o[j]; } return null; }
@@ -30,7 +30,7 @@
     $('#ie-lines').innerHTML = draft.map(function(d,i){
       var note = d.qty===0 ? 'هيتشال من الفاتورة ويرجع للمخزن' : (d.orig>0 ? 'كان '+fmt(d.orig)+' · ' : 'صنف جديد · ')+fmt(d.price)+' × '+fmt(d.qty)+' = '+money(d.qty*d.price);
       if(!products.get(d.pid)) note += ' · الصنف اتمسح من المخزن';
-      return '<li class="cline"><div class="cl-name">'+esc(d.name)+'<small>'+note+'</small></div>'+
+      return '<li class="cline"><div class="cl-name"><span class="ln">'+(i+1)+'</span>'+esc(d.name)+'<small>'+note+'</small></div>'+
         '<div class="step"><button type="button" data-act="ie-dec" data-i="'+i+'" aria-label="نقّص">−</button>'+
         '<input type="number" inputmode="decimal" min="0" step="any" value="'+d.qty+'" data-iqty="'+i+'" aria-label="الكمية">'+
         '<button type="button" data-act="ie-inc" data-i="'+i+'" aria-label="زوّد">+</button></div>'+
@@ -340,16 +340,17 @@
     toast('اتحفظت بيانات الفاتورة');
   }
   function buildReceipt(s){
-    var rows = s.lines.map(function(l){
+    var rows = s.lines.map(function(l,li){
+      var nn = (li+1)+'. ';
       var row = function(nm,q,pr){ return '<tr><td class="rn">'+nm+'</td><td>'+q+'</td><td>'+fmt(pr)+'</td><td>'+fmt(round(pr*(typeof q==='number' ? q : parseFloat(q))))+'</td></tr>'; };
       if(l.pack>1 && l.qty>=l.pack){
         /* الكرتونة الكاملة في سطر: "2 كرتونة × سعر الكرتونة"، والباقي قطع في سطر تاني */
         var c = Math.floor(l.qty/l.pack), r = round(l.qty-c*l.pack), out = '';
-        out += '<tr><td class="rn">'+esc(l.name)+' (كرتونة '+fmt(l.pack)+')</td><td>'+fmt(c)+' كرتونة</td><td>'+fmt(round(l.pack*l.price))+'</td><td>'+fmt(round(c*l.pack*l.price))+'</td></tr>';
+        out += '<tr><td class="rn">'+nn+esc(l.name)+' (كرتونة '+fmt(l.pack)+')</td><td>'+fmt(c)+' كرتونة</td><td>'+fmt(round(l.pack*l.price))+'</td><td>'+fmt(round(c*l.pack*l.price))+'</td></tr>';
         if(r>0) out += '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(r)+' قطعة</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(r*l.price))+'</td></tr>';
         return out;
       }
-      return '<tr><td class="rn">'+esc(l.name)+'</td><td>'+fmt(l.qty)+(l.u?' '+esc(l.u):'')+'</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(l.qty*l.price))+'</td></tr>';
+      return '<tr><td class="rn">'+nn+esc(l.name)+'</td><td>'+fmt(l.qty)+(l.u?' '+esc(l.u):'')+'</td><td>'+fmt(l.price)+'</td><td>'+fmt(round(l.qty*l.price))+'</td></tr>';
     }).join('');
     var cnt = s.lines.length;
     var kv = function(k,v,cls){ return '<div class="rc-kv'+(cls?' '+cls:'')+'"><span>'+k+'</span><strong>'+v+'</strong></div>'; };

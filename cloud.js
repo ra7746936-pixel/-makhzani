@@ -1,5 +1,7 @@
-window.APP_VER = 'v49';
-(window.__F=window.__F||{})['cloud.js']='v49';
+window.APP_VER = 'v50';
+(window.__F=window.__F||{})['cloud.js']='v50';
+/* أقل نسخة مطلوبة لكل ملف (بتتغيّر بس للملف اللي اتغيّر فعلًا في التحديث) */
+window.FILE_MIN = {'fb.js':49,'app1.js':50,'app2.js':50,'app3.js':49,'app4.js':49,'app5.js':50,'app6.js':49,'qr.js':49,'cloud.js':50};
 /* رقم الدعم: بيتاخد من CONTACT_TEXT اللي في index.html */
 function cloudSup(){ var m = String(window.CONTACT_TEXT||'').match(/\d{8,}/); return m ? ': '+m[0] : ''; }
 /* مخزني — حساب المحل والاشتراك من السحابة (المرحلة 1).
@@ -459,7 +461,7 @@ window.addEventListener('fb-pend',function(){ if(typeof renderStatus==='function
 /* تشغيل بدون نت: خدمة التخزين على الجهاز (بتشتغل على https بس) */
 try{
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=49').catch(function(){}); });
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js?v=50').catch(function(){}); });
     /* لما تنزل نسخة جديدة: البرنامج بيعيد تحميل نفسه لوحده لو مفيش فاتورة مفتوحة، ولو فيه بيقولك تفتحه تاني بعد الفاتورة */
     var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){

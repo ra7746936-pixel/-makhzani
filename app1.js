@@ -1,4 +1,4 @@
-(window.__F=window.__F||{})['app1.js']='v49';
+(window.__F=window.__F||{})['app1.js']='v50';
 /* مخزني - الجزء 1 من 3 (UTF-8، جنب index.html) */
   document.documentElement.setAttribute('dir','rtl');
   var $ = function(s){ return document.querySelector(s); };
@@ -309,9 +309,10 @@
     var ids = Object.keys(cart).sort(function(a,b){ return cartSeq[b]-cartSeq[a]; }), total = 0;
     var af = document.activeElement, typing = !!(af && af.matches && af.matches('#cart [data-qty],#cart [data-price]'));
     /* لو البياع بيكتب كمية أو سعر، مبنعيدش رسم السلة (أي مزامنة بتيجي من جهاز تاني متقطعش كتابته) */
+    var cartNo = {}; ids.slice().sort(function(a,b){ return cartSeq[a]-cartSeq[b]; }).forEach(function(id,i){ cartNo[id] = i+1; });
     var cartHtml = ids.length ? ids.map(function(id){
       var p = products.get(id), q2 = cart[id], pr = cartPrice[id]!=null ? cartPrice[id] : p.price, sub = round(q2*pr); total += sub;
-      return '<li class="cline"><div class="cl-name">'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+(canPrice() ? '<label class="cl-pr">السعر <input type="number" inputmode="decimal" min="0" step="any" value="'+pr+'" data-price="'+esc(id)+'" aria-label="سعر الوحدة"></label>' : fmt(pr))+' × '+fmt(q2)+(p.unit?' '+esc(p.unit):'')+' = '+money(sub)+(pr!==p.price ? ' <em class="cl-mod">سعر معدّل (الأصلي '+fmt(p.price)+')'+(isOwner() && p.cost!=null && pr<p.cost ? ' · أقل من الجملة!' : '')+'</em>' : '')+'</small></div>'+
+      return '<li class="cline"><div class="cl-name"><span class="ln">'+cartNo[id]+'</span>'+esc(p.name)+'<small>'+(p.pack>1 && q2>=p.pack ? '<b>'+esc(qtyText(q2,p.pack))+'</b> ('+fmt(q2)+' قطعة) · ' : '')+(canPrice() ? '<label class="cl-pr">السعر <input type="number" inputmode="decimal" min="0" step="any" value="'+pr+'" data-price="'+esc(id)+'" aria-label="سعر الوحدة"></label>' : fmt(pr))+' × '+fmt(q2)+(p.unit?' '+esc(p.unit):'')+' = '+money(sub)+(pr!==p.price ? ' <em class="cl-mod">سعر معدّل (الأصلي '+fmt(p.price)+')'+(isOwner() && p.cost!=null && pr<p.cost ? ' · أقل من الجملة!' : '')+'</em>' : '')+'</small></div>'+
         '<div class="step"><button type="button" data-act="dec" data-id="'+esc(id)+'" aria-label="نقّص">−</button>'+
         '<input type="number" inputmode="decimal" min="0" step="any" value="'+q2+'" data-qty="'+esc(id)+'" aria-label="الكمية">'+
         '<button type="button" data-act="inc" data-id="'+esc(id)+'" aria-label="زوّد">+</button></div>'+
@@ -442,7 +443,7 @@
     $('#recent').innerHTML = recent.length ? recent.map(function(s){
       var when = dt(s.ts);
       var tag = (s.edits && s.edits.length) ? '<span class="pill warn">اتعدّلت</span>' : '';
-      return '<li><span class="when">'+esc(invCode(s))+' · '+when+(s.by ? ' · <b>'+esc(s.by.name)+'</b>' : '')+'</span><span class="what">'+s.lines.map(function(l){ return esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+'</span><span class="sum">'+money(s.total)+'</span>'+
+      return '<li><span class="when">'+esc(invCode(s))+' · '+when+(s.by ? ' · <b>'+esc(s.by.name)+'</b>' : '')+'</span><span class="what">'+s.lines.map(function(l,li){ return (li+1)+'. '+esc(l.name)+' ×'+esc(qtyText(l.qty,l.pack,l.u)); }).join('، ')+'</span><span class="sum">'+money(s.total)+'</span>'+
         '<div class="inv-act"><button type="button" class="btn sm" data-act="editinv" data-sid="'+esc(s.id)+'">مرتجع / تعديل</button><button type="button" class="btn sm" data-act="print" data-sid="'+esc(s.id)+'">اطبع</button>'+tag+'</div></li>';
     }).join('') : '<li class="note">مفيش فواتير في الفترة دي.</li>';
   }
